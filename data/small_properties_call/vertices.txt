@@ -1,0 +1,9 @@
+id:id,gender,profession,city,state,country:string
+1,M,Engineer,LA,CA,USA
+2,F,Doctor,LA,CA,USA
+3,F,Engineer,LA,CA,USA
+4,M,Lawyer,NY,NY,USA
+5,F,Doctor,NY,NY,USA
+6,M,Engineer,LA,CA,USA
+7,F,Lawyer,NY,NY,USA
+8,F,Lawyer,LA,CA,USA

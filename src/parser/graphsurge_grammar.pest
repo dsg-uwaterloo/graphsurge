@@ -1,0 +1,329 @@
+// The Graphsurge Query API grammar expressed using Parsing Expression Grammar. Each _expression_
+// in the grammar consists of one of more _rules_.
+//
+// Syntax: https://pest.rs/book/grammars/syntax.html
+//
+// Case conventions for rule *names* (the actual behavior is controlled by the presence of an
+// _underscore_ in the expression).
+// * Lowercase rules become part of the parsed AST and appear when walking the AST.
+// * Uppercase rules are do not appear in the AST. These are used to just match the input query
+//   (e.g., keywords) without having to explicitly process the rules when walking the AST.
+
+graphsurge_query = {
+    SOI ~ (
+         load_graph
+       | serialize_graph
+       | deserialize_graph
+       | write_graph
+       | create_view_or_collection
+       | load_collection
+       | generate_collection
+       | generate_windowed_collection
+       | serialize_collection
+       | deserialize_collection
+       | write_collection
+       | delete_collections
+       | run_computation
+       | show_queries
+       | set_threads
+       | create_aggregated_cube
+    ) ~ (CHAR_SEMICOLON)? ~ EOI
+}
+
+set_threads = {
+    KEYWORD_SET ~ KEYWORD_THREADS ~ num_usize ~ KEYWORD_AND ~ KEYWORD_PROCESS_ID ~ num_usize
+}
+
+write_graph = { KEYWORD_SAVE ~ KEYWORD_GRAPH ~ KEYWORD_TO ~ non_empty_string }
+
+write_collection = { KEYWORD_SAVE ~ KEYWORD_CUBE ~ variable ~ KEYWORD_TO ~ non_empty_string ~
+               num_usize ~ bool }
+
+serialize_graph = {
+    KEYWORD_SERIALIZE ~ KEYWORD_TO ~ non_empty_string ~
+    (keyword_block_size ~ num_usize)? ~ (keyword_threads ~ num_usize)?
+}
+deserialize_graph = {
+    KEYWORD_DESERIALIZE ~ KEYWORD_FROM ~ non_empty_string ~ (keyword_threads ~ num_usize)?
+}
+
+load_collection = {
+    KEYWORD_LOAD ~ KEYWORD_CUBE ~ variable ~ num_usize ~ num_usize ~
+    KEYWORD_FROM ~ non_empty_string ~ KEYWORD_WITH ~
+    KEYWORD_PREFIX ~ non_empty_string ~
+    separator? ~
+    comment_char? ~
+    threads? ~
+    with_full?
+}
+serialize_collection = {
+    KEYWORD_SERIALIZE ~ KEYWORD_CUBE ~ variable ~ KEYWORD_TO ~ non_empty_string ~
+    (keyword_block_size ~ num_usize)? ~ (keyword_threads ~ num_usize)?
+}
+deserialize_collection = {
+    KEYWORD_DESERIALIZE ~ KEYWORD_CUBE ~ KEYWORD_FROM ~ non_empty_string ~
+    (keyword_threads ~ num_usize)?
+}
+
+generate_collection = {
+    KEYWORD_GENERATE ~ KEYWORD_CUBE ~ variable ~ num_usize ~ num_usize ~ num_usize ~ num_usize ~
+    KEYWORD_INITIAL ~ non_empty_string
+}
+
+generate_windowed_collection = {
+    KEYWORD_WINDOW ~ KEYWORD_CUBE ~ variable ~ num_usize ~ num_usize ~ num_usize ~ num_usize ~
+    num_usize ~ KEYWORD_INITIAL ~ non_empty_string
+}
+
+load_graph = {
+    KEYWORD_LOAD ~ KEYWORD_GRAPH ~ KEYWORD_WITH ~
+    vertex_file? ~
+    KEYWORD_EDGES ~  KEYWORD_FROM ~ non_empty_string ~
+    separator? ~
+    comment_char? ~
+    has_headers? ~
+    save_mappings? ~
+    keyword_randomize?
+}
+vertex_file = {
+    (KEYWORD_VERTICES ~ KEYWORD_FROM ~ non_empty_string ~ KEYWORD_AND)
+}
+separator = {
+    KEYWORD_SEPARATOR ~ non_empty_string
+}
+threads = {
+    KEYWORD_THREADS ~ num_usize
+}
+comment_char = {
+    KEYWORD_COMMENT ~ non_empty_string
+}
+has_headers = {
+    KEYWORD_HAS_HEADERS ~ bool
+}
+save_mappings = {
+    KEYWORD_SAVE ~ KEYWORD_MAPPINGS ~ KEYWORD_TO ~ non_empty_string
+}
+with_full = {
+    KEYWORD_WITH_FULL
+}
+
+show_queries = {
+    KEYWORD_SHOW ~ (keyword_computations | keyword_collections | collection_data)
+}
+collection_data = { KEYWORD_DATA ~ KEYWORD_FOR ~ KEYWORD_COLLECTION ~ non_empty_string }
+
+create_view_or_collection = {
+    KEYWORD_CREATE ~ KEYWORD_VIEW ~ (single_sections | collection)
+}
+
+create_aggregated_cube = {
+    KEYWORD_CREATE ~ KEYWORD_AGGREGATED ~ KEYWORD_CUBE ~ single_sections
+}
+
+single_sections = {
+    variable ~ KEYWORD_WITH ~ vertices_sections ~ edges_sections ~
+    (KEYWORD_SAVE ~ KEYWORD_TO ~ non_empty_string)?
+}
+
+collection = {
+    KEYWORD_COLLECTION ~ variable ~ KEYWORD_WHERE ~ dimensions ~
+    keyword_manually_ordered? ~
+    keyword_materialized? ~
+    keyword_materialize_full_view? ~
+    hosts?
+}
+dimensions = { (dimension ~ CHAR_COMMA?)+ }
+hosts = { KEYWORD_HOSTS ~ non_empty_string+ }
+
+vertices_sections = { vertices_section* }
+vertices_section = { KEYWORD_VERTICES ~ (KEYWORD_AS ~ variable)? ~ view_details }
+edges_sections = { edges_section* }
+edges_section = {
+    KEYWORD_EDGES ~ (KEYWORD_AS ~ variable)? ~ (between_vertices)? ~ view_details
+}
+between_vertices = {
+    KEYWORD_BETWEEN ~ CHAR_ROUND_OPEN ~ variable ~ CHAR_COMMA ~ variable ~ CHAR_ROUND_CLOSE
+}
+
+view_details = {
+    (KEYWORD_WHERE ~ where_conditions)? ~
+    (KEYWORD_GROUP ~ KEYWORD_BY ~ CHAR_SQUARE_OPEN? ~ group_clauses ~ CHAR_SQUARE_CLOSE?)? ~
+    (KEYWORD_AGGREGATE ~ CHAR_CURLY_OPEN ~ aggregate_clauses ~ CHAR_CURLY_CLOSE)?
+}
+
+group_clauses = { (CHAR_ROUND_OPEN ~ group_clause ~ CHAR_ROUND_CLOSE ~ CHAR_COMMA?)+ }
+group_clause = { ((where_predicate | dimension | variable) ~ CHAR_COMMA?)+ }
+dimension = { (CHAR_SQUARE_OPEN ~ where_conditions ~ CHAR_SQUARE_CLOSE ~ CHAR_COMMA?)+ }
+
+aggregate_clauses = { (aggregate_clause ~ CHAR_COMMA?)+ }
+aggregate_clause = {
+    variable ~ CHAR_COLON ~ variable ~ CHAR_ROUND_OPEN ~ (char_star | variable) ~ CHAR_ROUND_CLOSE
+}
+
+where_conditions = {
+    where_condition ~ (KEYWORD_AND ~ where_condition)*
+}
+where_condition = {
+    positive_where_condition | negative_where_condition
+}
+negative_where_condition = {
+    CHAR_NOT_EQUAL_EXCLAMATION ~ CHAR_ROUND_OPEN ~ positive_where_condition ~ CHAR_ROUND_CLOSE
+}
+positive_where_condition = {
+    where_predicate ~ (KEYWORD_AND ~ where_predicate)*
+}
+where_predicate = {
+    complex_variable ~ (char_less_equal | char_greater_equal | char_not_equal |
+                          char_less | char_greater | char_equal) ~
+    variable_or_value
+}
+complex_variable = { variable ~ (CHAR_DOT ~ variable)? }
+variable_or_value = { value | complex_variable }
+
+delete_collections = { KEYWORD_DELETE ~ KEYWORD_CUBES }
+
+run_computation = {
+    KEYWORD_RUN ~ (keyword_arranged_differential | keyword_adaptive ~ num_usize |
+    keyword_differential | keyword_individual | keyword_arranged_individual |
+    keyword_comparedifferential)? ~ KEYWORD_COMPUTATION ~ variable ~ computation_properties? ~
+    (KEYWORD_FROM ~  non_empty_string)? ~
+    KEYWORD_ON ~ KEYWORD_COLLECTION ~ variable ~
+    results? ~
+    hosts? ~
+    split_indices?
+}
+computation_properties = {
+    CHAR_ROUND_OPEN ~ (computation_property)+ ~ CHAR_COMMA? ~ CHAR_ROUND_CLOSE
+}
+computation_property = { variable ~ CHAR_EQUAL ~ (value | pairs) }
+results = {
+    keyword_no_results | keyword_diff_results | KEYWORD_SAVE ~ KEYWORD_RESULTS ~
+    KEYWORD_TO ~ non_empty_string
+}
+split_indices = { KEYWORD_INDICES ~ CHAR_SQUARE_OPEN ~ num_usize* ~ CHAR_SQUARE_CLOSE }
+
+variable = @{ (ASCII_ALPHANUMERIC | "_")+ }
+value = { num_isize | string | bool | pair }
+pairs = { CHAR_SQUARE_OPEN ~ (pair)+ ~ CHAR_SQUARE_CLOSE }
+pair = { CHAR_ROUND_OPEN ~ num_isize ~ CHAR_COMMA ~ num_isize ~ CHAR_ROUND_CLOSE ~ CHAR_COMMA? }
+num_isize = @{ char_minus? ~ num_usize }
+num_usize = @{ "0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
+bool = { bool_true | bool_false }
+bool_true = { ^"true" }
+bool_false = { ^"false" }
+
+char_star = { "*" }
+char_less_equal = { "<=" }
+char_greater_equal = { ">=" }
+char_not_equal = { "<>" }
+char_less = { "<" }
+char_greater = { ">" }
+char_equal = { "=" }
+char_minus = { "-" }
+
+CHAR_SPACE = _{ " " }
+CHAR_TAB = _{ "\t" }
+
+CHAR_ISIZE = _{ "i" }
+
+CHAR_BACKWARD_SLASH = _{ "\\" }
+CHAR_FORWARD_SLASH = _{ "/" }
+CHAR_SINGLE_QUOTE = _{ "\'" }
+CHAR_DOUBLE_QUOTE = _{ "\"" }
+
+CHAR_NOT_EQUAL_EXCLAMATION = _{ "!" }
+CHAR_EQUAL = _{ "=" }
+
+CHAR_DOT = _{ "." }
+CHAR_COMMA = _{ "," }
+CHAR_SEMICOLON = _{ ";" }
+CHAR_COLON = _{ ":" }
+CHAR_UNDERSCORE = _{ "_" }
+CHAR_SQUARE_OPEN = _{ "[" }
+CHAR_SQUARE_CLOSE = _{ "]" }
+CHAR_CURLY_OPEN = _{ "{" }
+CHAR_CURLY_CLOSE = _{ "}" }
+CHAR_ROUND_OPEN = _{ "(" }
+CHAR_ROUND_CLOSE = _{ ")" }
+
+KEYWORD_LOAD = _{ ^"load" }
+KEYWORD_GENERATE = _{ ^"generate" }
+KEYWORD_WINDOW = _{ ^"window" }
+KEYWORD_SAVE = _{ ^"save" }
+KEYWORD_RESULTS = _{ ^"results" }
+KEYWORD_GRAPH = _{ ^"graph" }
+KEYWORD_FROM = _{ ^"from" }
+KEYWORD_TO = _{ ^"to" }
+KEYWORD_FILE = _{ ^"file" }
+KEYWORD_INITIAL = _{ ^"initial" }
+KEYWORD_WITH = _{ ^"with" }
+KEYWORD_VERTICES = _{ ^"vertices" }
+KEYWORD_EDGES = _{ ^"edges" }
+KEYWORD_TYPE = _{ ^"type" }
+KEYWORD_AND = _{ ^"and" }
+KEYWORD_SHOW = _{ ^"show" }
+KEYWORD_SET = _{ ^"set" }
+KEYWORD_SERIALIZE = _{ ^"serialize" }
+KEYWORD_DESERIALIZE = _{ ^"deserialize" }
+KEYWORD_CREATE = _{ ^"create" }
+KEYWORD_DELETE = _{ ^"delete" }
+KEYWORD_CUBE = _{ ^"cube" }
+KEYWORD_CUBES = _{ ^"cubes" }
+KEYWORD_WHERE = _{ ^"where" }
+KEYWORD_RUN = _{ ^"run" }
+KEYWORD_ON = _{ ^"on" }
+KEYWORD_GROUP = _{ ^"group" }
+KEYWORD_AGGREGATE = _{ ^"aggregate" }
+KEYWORD_BETWEEN = _{ ^"between" }
+KEYWORD_BY = _{ ^"by" }
+KEYWORD_AS = _{ ^"as" }
+KEYWORD_DATA = _{ ^"data" }
+KEYWORD_FOR = _{ ^"for" }
+KEYWORD_VIEW = _{ ^"view" }
+KEYWORD_COMPUTATION = _{ ^"computation" }
+KEYWORD_FILTERED = _{ ^"filtered" }
+KEYWORD_COLLECTION = _{ ^"collection" }
+KEYWORD_AGGREGATED = _{ ^"aggregated" }
+KEYWORD_SEPARATOR = _{ ^"separator" }
+KEYWORD_COMMENT = _{ ^"comment" }
+KEYWORD_HAS_HEADERS = _{ ^"has_headers" }
+KEYWORD_MAPPINGS = _{ ^"mappings" }
+KEYWORD_HOSTS = _{ ^"hosts" }
+KEYWORD_INDICES = _{ ^"indices" }
+KEYWORD_THREADS = _{ ^"threads" }
+KEYWORD_PROCESS_ID = _{ ^"process_id" }
+KEYWORD_PREFIX = _{ ^"prefix" }
+KEYWORD_WITH_FULL = _{ ^"with_full" }
+
+keyword_manually_ordered = { ^"manually_ordered" }
+keyword_materialized = { ^"materialized" }
+keyword_block_size = { ^"block_size" }
+keyword_threads = { ^"threads" }
+keyword_computations = { ^"computations" }
+keyword_collections = { ^"collections" }
+keyword_cubes = { ^"cubes" }
+keyword_comparedifferential = { ^"compare_differential" }
+keyword_differential = { ^"differential" }
+keyword_arranged_differential = { ^"arranged_differential" }
+keyword_adaptive = { ^"adaptive" }
+keyword_arranged_individual = { ^"arranged_individual" }
+keyword_individual = { ^"individual" }
+keyword_no_results = { ^"noresults" }
+keyword_diff_results = { ^"diffresults" }
+keyword_materialize_full_view = { ^"materialize_full_view" }
+keyword_randomize = { ^"randomize" }
+
+non_empty_string = ${ CHAR_SINGLE_QUOTE ~ non_empty_inner_string ~ CHAR_SINGLE_QUOTE }
+non_empty_inner_string = @{ inner_char+ }
+
+string = ${ CHAR_SINGLE_QUOTE ~ inner_string ~ CHAR_SINGLE_QUOTE }
+inner_string = @{ inner_char* }
+
+inner_char = {
+    !(CHAR_SINGLE_QUOTE | CHAR_BACKWARD_SLASH) ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+}
+
+// Pest automatically parses whitespace and comments using the following rules.
+WHITESPACE = _{ CHAR_SPACE | CHAR_TAB | NEWLINE }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }

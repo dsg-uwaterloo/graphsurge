@@ -1,0 +1,10 @@
+id:id,city:string,state,country:string,gender
+0,waterloo,ontario,canada,M
+1,waterloo,ontario,canada,M
+2,toronto,ontario,canada,F
+3,toronto,ontario,canada,M
+4,toronto,ontario,canada,F
+5,waterloo,maharasthra,india,
+6,mumbai,maharasthra,india,
+7,pune,maharasthra,india,
+8,bangalore,karnataka,india,

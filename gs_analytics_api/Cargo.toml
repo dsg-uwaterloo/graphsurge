@@ -1,0 +1,12 @@
+[package]
+name = "gs_analytics_api"
+version = "0.1.0"
+authors = ["Siddhartha <dev@sdht.in>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+derive-new = "0.5"
+timely = "0.11"
+differential-dataflow = "0.11"

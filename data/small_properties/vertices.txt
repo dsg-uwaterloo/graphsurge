@@ -1,0 +1,11 @@
+# Used in tests. Do not edit.
+id:id,city:string,state,country:string,gender,include:bool,include2:bool
+0,waterloo,ontario,canada,M,true,true
+1,waterloo,ontario,canada,M,false,false
+2,toronto,ontario,canada,F,true,false
+3,toronto,ontario,canada,M,false,false
+4,toronto,ontario,canada,F,true,false
+5,waterloo,ontario,canada,F,true,false
+6,mumbai,maharasthra,india,F,true,true
+7,pune,maharasthra,india,F,false,true
+8,bangalore,karnataka,india,F,false,true

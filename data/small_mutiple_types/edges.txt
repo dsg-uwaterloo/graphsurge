@@ -1,0 +1,9 @@
+# Used in tests. Do not edit.
+from_id:start_id,to_id:end_id,type
+0,5,e1
+1,6,e1
+1,7,e1
+2,8,e1
+9,0,e2
+8,2,e2
+4,3,e2

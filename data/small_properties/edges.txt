@@ -1,0 +1,9 @@
+# Used in tests. Do not edit.
+from_id:start_id,to_id:end_id,amount:int,year:int,include:bool
+2,1,400,2008,true
+0,1,100,2000,true
+0,2,200,2018,false
+3,2,200,2000,true
+6,7,4000,2010,true
+4,5,600,2000,false
+3,7,600,2005,false

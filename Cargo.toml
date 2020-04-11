@@ -1,0 +1,49 @@
+[package]
+name = "graphsurge"
+version = "0.1.0"
+authors = ["Siddhartha Sahu <dev@sdht.in>"]
+description = "System for graph analytics on collections of views."
+repository = "https://github.com/dsg-uwaterloo/graphsurge"
+readme = "README.md"
+license = "Apache-2.0"
+keywords = ["graph", "graph-analytics", "view-collection"]
+categories = ["database-implementations"]
+edition = "2018"
+
+[dependencies]
+hashbrown = { version = "0.7", features = ["serde"] }
+rand="0.7"
+chrono = "0.4"
+log = { version = "0.4", features = ["std"] }
+psutil = "1.7"
+rustyline = "6.1"
+itertools = "0.9"
+derive-new = "0.5"
+csv = "1.1"
+crossbeam-utils = "0.7"
+crossbeam-channel = "0.4"
+clap = { version = "2.33", default-features = false }
+pest = "2.1"
+pest_derive = "2.1"
+bincode = "1.2"
+serde = "1.0"
+serde_derive = "1.0"
+graph_map = "0.1"
+abomonation = "0.7"
+abomonation_derive = "0.5"
+timely_sort="0.1"
+timely = "0.11"
+differential-dataflow = "0.11"
+gs_analytics_api = { path = "gs_analytics_api"}
+
+[[bin]]
+name = "graphsurge"
+path = "src/main.rs"
+bench = false
+
+[lib]
+bench = false
+
+[profile.release]
+lto = "thin"
+debug = false

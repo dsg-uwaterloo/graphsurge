@@ -1,0 +1,2 @@
+UserId:START_ID|PostId:END_ID|VoteTypeId:UINT|BountyAmount:UINT|CreationYear:INT|CreationMonth:INT|CreationDay:INT|CreationHour:INT|CreationMinute:INT|CreationSecond:INT
+5779083|56408275|5||2019|06|02|00|00|00
