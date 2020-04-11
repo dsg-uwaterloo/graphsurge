@@ -2,6 +2,8 @@
 
 ![Continuous integration](https://github.com/dsg-uwaterloo/graphsurge/workflows/CI/badge.svg)
 
+![](logo.png?raw=true)
+
 Graphsurge is a new system for performing analytical computations on multiple snapshots or _views_ 
 of large-scale static property graphs. Graphsurge allows users to create _view collections_, a set 
 of related views of a graph created by applying filter predicates on node and edge properties, and
@@ -126,8 +128,7 @@ graphsurge> RUN ARRANGED_DIFFERENTIAL COMPUTATION wcc on COLLECTION Years
 The same process can be repeated for additional hosts machines.
 
 ### Writing new computations
-Graphsurge already has [implementations](https://github.com/dsg-uwaterloo/graphsurge/blob/master/src/computations/builder.rs#L45)
+Graphsurge already has [implementations](src/computations/builder.rs#L45)
 for a set of common graph algorithms. New computations can be written using the [Analytics 
-Computation API](https://github.com/dsg-uwaterloo/graphsurge/blob/master/gs_analytics_api/src).
-You can see examples of how to use the API for [bfs](https://github.com/dsg-uwaterloo/graphsurge/tree/master/src/computations/bfs)
-and [scc](https://github.com/dsg-uwaterloo/graphsurge/tree/master/src/computations/scc).
+Computation API](gs_analytics_api/src). You can see examples of how to use the API for 
+[bfs](src/computations/bfs) and [scc](src/computations/scc).
