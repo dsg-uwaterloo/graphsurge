@@ -126,6 +126,8 @@ graphsurge> RUN ARRANGED_DIFFERENTIAL COMPUTATION wcc on COLLECTION Years
 The same process can be repeated for additional hosts machines.
 
 ### Writing new computations
-Graphsurge already has implementations for a set of common graph algorithms. New computations can be 
-written using the Analytical Computation API. You can see examples of how to use the API for bfs
-and scc.
+Graphsurge already has [implementations](https://github.com/dsg-uwaterloo/graphsurge/blob/master/src/computations/builder.rs#L45)
+for a set of common graph algorithms. New computations can be written using the [Analytics 
+Computation API](https://github.com/dsg-uwaterloo/graphsurge/blob/master/gs_analytics_api/src).
+You can see examples of how to use the API for [bfs](https://github.com/dsg-uwaterloo/graphsurge/tree/master/src/computations/bfs)
+and [scc](https://github.com/dsg-uwaterloo/graphsurge/tree/master/src/computations/scc).
