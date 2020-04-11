@@ -1,8 +1,10 @@
 # Graphsurge: Graph Analytics on View Collections using Differential Computations
 
-![Continuous integration](https://github.com/dsg-uwaterloo/graphsurge/workflows/CI/badge.svg)
+<p align="center">
+  <img width="400" src="logo.png?raw=true">
+</p>
 
-![](logo.png?raw=true)
+![Continuous integration](https://github.com/dsg-uwaterloo/graphsurge/workflows/CI/badge.svg)
 
 Graphsurge is a new system for performing analytical computations on multiple snapshots or _views_ 
 of large-scale static property graphs. Graphsurge allows users to create _view collections_, a set 
