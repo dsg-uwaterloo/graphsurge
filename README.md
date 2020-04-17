@@ -53,7 +53,7 @@ previous views.
   point where rerunning from scratch is predicted to be faster than to continue running
   differentially.
 
-More details on our techniques and experimental results can be found in [our paper](https://arxiv.org/abs/).
+More details on our techniques and experimental results can be found in [our paper](https://arxiv.org/abs/2004.05297).
 
 ## Using Graphsurge
 
@@ -133,3 +133,6 @@ Graphsurge already has [implementations](src/computations/builder.rs#L45)
 for a set of common graph algorithms. New computations can be written using the [Analytics
 Computation API](gs_analytics_api/src). You can see examples of how to use the API for
 [bfs](src/computations/bfs) and [scc](src/computations/scc).
+
+Documentation for more queries supported in Graphsurge will be up later. Meanwhile, if you can't
+wait, browse through the [query grammar](src/parser).
