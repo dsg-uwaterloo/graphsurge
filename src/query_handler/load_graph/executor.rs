@@ -17,7 +17,7 @@ use hashbrown::HashMap;
 use log::{debug, info, warn};
 use std::fs::File;
 use std::io::BufReader;
-use std::ops::Deref;
+
 
 const DEFAULT_TYPE_STRING: &str = "string";
 const DEFAULT_SEPARATOR: u8 = b',';
@@ -59,9 +59,9 @@ impl GraphSurgeQuery for LoadGraphAst {
         ];
 
         let mappings = vec![
-            ("int".into(), closures[0].deref()),
-            ("bool".into(), closures[1].deref()),
-            ("string".into(), closures[2].deref()),
+            ("int".into(), &*closures[0]),
+            ("bool".into(), &*closures[1]),
+            ("string".into(), &*closures[2]),
         ]
         .into_iter()
         .collect::<ClosureMappings>();

@@ -9,7 +9,7 @@ use differential_dataflow::Collection;
 use gs_analytics_api::{
     ComputationInput, ComputationTypes, EdgeArrangementEnter, GraphsurgeComputation,
 };
-use std::ops::Deref;
+
 use timely::dataflow::Scope;
 use timely::order::Product;
 use timely::progress::timestamp::Refines;
@@ -33,7 +33,7 @@ impl GraphsurgeComputation for SCC {
                 Product::new(Default::default(), 1),
             );
 
-            let result = trim_edges(&trim_edges(inner.deref(), &edges), &reverse);
+            let result = trim_edges(&trim_edges(&*inner, &edges), &reverse);
 
             inner.set(&result);
             result.leave()

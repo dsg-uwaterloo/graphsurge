@@ -8,7 +8,7 @@ use crate::graph::GraphPointer;
 use differential_dataflow::hashable::Hashable;
 use gs_analytics_api::VertexId;
 use hashbrown::HashMap;
-use std::ops::Deref;
+
 use timely::communication::Push;
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::channels::pushers::buffer::Session;
@@ -84,7 +84,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> MapEdgesBetweenGroups<S>
                                 // All vertex tuples have arrived. Directly process the edges.
                                 let session = output.session(&time);
                                 process_edges(
-                                    graph_pointer.deref(),
+                                    &*graph_pointer,
                                     &mut edges,
                                     &vertex_stash,
                                     session,
@@ -99,7 +99,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> MapEdgesBetweenGroups<S>
                             // Process the stored edges.
                             let session = output.session(&time);
                             process_edges(
-                                graph_pointer.deref(),
+                                &*graph_pointer,
                                 &mut edge_stash,
                                 &vertex_stash,
                                 session,

@@ -12,7 +12,7 @@ use gs_analytics_api::{DiffCount, SimpleEdge};
 use hashbrown::HashMap;
 use log::info;
 use serde::export::fmt::Display;
-use std::ops::Deref;
+
 use std::sync::mpsc::Receiver;
 use timely::communication::Allocate;
 use timely::dataflow::operators::capture::capture::Capture;
@@ -61,7 +61,7 @@ pub fn differential_run<C: Computation, T: Timestamp + Refines<()> + Lattice + D
         let mut all_times = Vec::new();
         let mut results = HashMap::new();
         insert_edges::<_, C, T>(
-            diff_iterators.deref(),
+            &*diff_iterators,
             &mut edge_input,
             edge_cap,
             &mut worker,

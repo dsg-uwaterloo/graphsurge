@@ -20,7 +20,7 @@ use crossbeam_utils::thread;
 use hashbrown::HashMap;
 use itertools::Itertools;
 use log::info;
-use std::ops::Deref;
+
 use timely::dataflow::operators::broadcast::Broadcast;
 use timely::dataflow::operators::capture::capture::Capture;
 use timely::dataflow::operators::capture::event::Event::Messages;
@@ -119,7 +119,7 @@ pub fn execute(
             (filtered_matrix_stream.capture(), order_stream.capture())
         });
 
-        for edgeid in get_timely_edgeid_stream(graph_pointer.deref(), worker_index, worker_count) {
+        for edgeid in get_timely_edgeid_stream(&*graph_pointer, worker_index, worker_count) {
             edge_input.send(edgeid);
         }
         edge_input.close();

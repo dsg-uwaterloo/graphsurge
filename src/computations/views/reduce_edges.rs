@@ -14,7 +14,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> ReduceEdges<S> for Stream<S, EdgeMap
         let mut stash = HashMap::new();
         self.unary_notify(Pipeline, "ReduceEdges", None, move |input, output, notificator| {
             input.for_each(|time, input_data| {
-                let collection = stash.entry(time.time().clone()).or_insert_with(|| {
+                let collection = stash.entry(*time.time()).or_insert_with(|| {
                     notificator.notify_at(time.retain());
                     HashMap::new()
                 });

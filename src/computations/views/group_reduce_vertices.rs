@@ -27,7 +27,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> GroupReduceVertices<S>
         let mut groups = HashMap::new();
         self.unary_notify(Pipeline, "GroupReduce", None, move |input, output, notificator| {
             input.for_each(|time, input_data| {
-                let collection = groups.entry(time.time().clone()).or_insert_with(|| {
+                let collection = groups.entry(*time.time()).or_insert_with(|| {
                     notificator.notify_at(time.retain());
                     HashMap::new()
                 });

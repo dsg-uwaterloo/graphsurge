@@ -23,7 +23,7 @@ use crate::query_handler::create_view::CreateViewAst;
 use differential_dataflow::hashable::Hashable;
 use itertools::Itertools;
 use log::info;
-use std::ops::Deref;
+
 use timely::dataflow::operators::capture::capture::Capture;
 use timely::dataflow::operators::capture::event::Event::Messages;
 use timely::dataflow::operators::exchange::Exchange;
@@ -194,13 +194,13 @@ pub fn execute(
                 });
 
             for vertex in
-                get_timely_vertex_stream(graph_pointer.deref(), worker_index, worker_count)
+                get_timely_vertex_stream(&*graph_pointer, worker_index, worker_count)
             {
                 vertex_input.send(vertex);
             }
             vertex_input.close();
             for edgeid in
-                get_timely_edgeid_stream(graph_pointer.deref(), worker_index, worker_count)
+                get_timely_edgeid_stream(&*graph_pointer, worker_index, worker_count)
             {
                 edge_input.send(edgeid);
             }

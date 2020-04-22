@@ -5,7 +5,7 @@ use crate::graph::GraphPointer;
 use crate::query_handler::create_view::{PredicateFunction, PredicateFunctionClosure};
 use gs_analytics_api::EdgeId;
 use std::convert::TryFrom;
-use std::ops::Deref;
+
 use std::sync::Arc;
 
 pub fn get_edge_closure(
@@ -17,7 +17,7 @@ pub fn get_edge_closure(
         Operand::Property(left_edge_pki) => match operand2 {
             RightOperand::Value(right_value) => {
                 Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                    let graph = graph_pointer.deref();
+                    let graph = &*graph_pointer;
                     let edge = graph.get_edge(edge_id);
 
                     let pv = PropertyValue::get_id(edge_id);
@@ -29,7 +29,7 @@ pub fn get_edge_closure(
             RightOperand::Variable(right_variable) => match right_variable {
                 Operand::Property(right_edge_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let pv = PropertyValue::get_id(edge_id);
@@ -40,7 +40,7 @@ pub fn get_edge_closure(
                     })
                 }
                 Operand::Edge => Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                    let graph = graph_pointer.deref();
+                    let graph = &*graph_pointer;
                     let edge = graph.get_edge(edge_id);
 
                     let pv = PropertyValue::get_id(edge_id);
@@ -51,7 +51,7 @@ pub fn get_edge_closure(
                 }),
                 Operand::SourceVertex(right_src_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let pv = PropertyValue::get_id(edge_id);
@@ -69,7 +69,7 @@ pub fn get_edge_closure(
                 }
                 Operand::DestinationVertex(right_dst_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let pv = PropertyValue::get_id(edge_id);
@@ -90,7 +90,7 @@ pub fn get_edge_closure(
         Operand::Edge => match operand2 {
             RightOperand::Value(right_value) => {
                 Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                    let graph = graph_pointer.deref();
+                    let graph = &*graph_pointer;
                     let edge = graph.get_edge(edge_id);
                     let left_value = get_edge_pair(edge);
 
@@ -100,7 +100,7 @@ pub fn get_edge_closure(
             RightOperand::Variable(right_variable) => match right_variable {
                 Operand::Property(right_edge_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
                         let left_value = get_edge_pair(edge);
 
@@ -111,7 +111,7 @@ pub fn get_edge_closure(
                     })
                 }
                 Operand::Edge => Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                    let graph = graph_pointer.deref();
+                    let graph = &*graph_pointer;
                     let edge = graph.get_edge(edge_id);
 
                     let edge_value = get_edge_pair(edge);
@@ -120,7 +120,7 @@ pub fn get_edge_closure(
                 }),
                 Operand::SourceVertex(right_src_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
                         let left_value = get_edge_pair(edge);
 
@@ -136,7 +136,7 @@ pub fn get_edge_closure(
                 }
                 Operand::DestinationVertex(right_dst_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let left_value = get_edge_pair(edge);
@@ -155,7 +155,7 @@ pub fn get_edge_closure(
         Operand::SourceVertex(left_src_pki) => match operand2 {
             RightOperand::Value(right_value) => {
                 Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                    let graph = graph_pointer.deref();
+                    let graph = &*graph_pointer;
                     let edge = graph.get_edge(edge_id);
 
                     let pv = PropertyValue::get_id(edge.src_vertex_id);
@@ -168,7 +168,7 @@ pub fn get_edge_closure(
             RightOperand::Variable(right_variable) => match right_variable {
                 Operand::Property(right_edge_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let pv = PropertyValue::get_id(edge.src_vertex_id);
@@ -185,7 +185,7 @@ pub fn get_edge_closure(
                     })
                 }
                 Operand::Edge => Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                    let graph = graph_pointer.deref();
+                    let graph = &*graph_pointer;
                     let edge = graph.get_edge(edge_id);
 
                     let pv = PropertyValue::get_id(edge.src_vertex_id);
@@ -198,7 +198,7 @@ pub fn get_edge_closure(
                 }),
                 Operand::SourceVertex(right_src_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let vertex_id = edge.src_vertex_id;
@@ -212,7 +212,7 @@ pub fn get_edge_closure(
                 }
                 Operand::DestinationVertex(right_dst_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let pv = PropertyValue::get_id(edge.src_vertex_id);
@@ -237,7 +237,7 @@ pub fn get_edge_closure(
         Operand::DestinationVertex(left_dst_pki) => match operand2 {
             RightOperand::Value(right_value) => {
                 Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                    let graph = graph_pointer.deref();
+                    let graph = &*graph_pointer;
                     let edge = graph.get_edge(edge_id);
 
                     let pv = PropertyValue::get_id(edge.dst_vertex_id);
@@ -250,7 +250,7 @@ pub fn get_edge_closure(
             RightOperand::Variable(right_variable) => match right_variable {
                 Operand::Property(right_edge_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let pv = PropertyValue::get_id(edge.dst_vertex_id);
@@ -267,7 +267,7 @@ pub fn get_edge_closure(
                     })
                 }
                 Operand::Edge => Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                    let graph = graph_pointer.deref();
+                    let graph = &*graph_pointer;
                     let edge = graph.get_edge(edge_id);
 
                     let pv = PropertyValue::get_id(edge.dst_vertex_id);
@@ -280,7 +280,7 @@ pub fn get_edge_closure(
                 }),
                 Operand::SourceVertex(right_src_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let pv = PropertyValue::get_id(edge.dst_vertex_id);
@@ -302,7 +302,7 @@ pub fn get_edge_closure(
                 }
                 Operand::DestinationVertex(right_dst_pki) => {
                     Arc::new(move |edge_id: EdgeId, graph_pointer: GraphPointer| {
-                        let graph = graph_pointer.deref();
+                        let graph = &*graph_pointer;
                         let edge = graph.get_edge(edge_id);
 
                         let vertex_id = edge.dst_vertex_id;

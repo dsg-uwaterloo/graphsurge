@@ -29,7 +29,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> EdgeDiff<S> for Stream<S, FilteredMa
         let mut times = HashMap::new();
         self.unary_notify(Pipeline, "ProcessEdge", None, move |input, output, notificator| {
             input.for_each(|time, input_data| {
-                let mut stash = times.entry(time.time().clone()).or_insert_with(|| {
+                let mut stash = times.entry(*time.time()).or_insert_with(|| {
                     notificator.notify_at(time.retain());
                     get_results_stash(&orders, &dimension_lengths)
                 });

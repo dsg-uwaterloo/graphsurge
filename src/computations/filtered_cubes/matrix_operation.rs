@@ -25,7 +25,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> MatrixOperation<S> for Stream<S, Fil
         let mut times = HashMap::new();
         self.unary_notify(Pipeline, "MatrixOperation", None, move |input, output, notificator| {
             input.for_each(|time, input_data| {
-                let matrices = times.entry(time.time().clone()).or_insert_with(|| {
+                let matrices = times.entry(*time.time()).or_insert_with(|| {
                     if worker_index == 0 {
                         info!("Starting ordering matrices processing");
                     }
