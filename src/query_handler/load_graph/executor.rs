@@ -18,7 +18,6 @@ use log::{debug, info, warn};
 use std::fs::File;
 use std::io::BufReader;
 
-
 const DEFAULT_TYPE_STRING: &str = "string";
 const DEFAULT_SEPARATOR: u8 = b',';
 pub const DEFAULT_HAS_HEADERS: bool = true;

@@ -83,12 +83,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> MapEdgesBetweenGroups<S>
                             if is_stream_done {
                                 // All vertex tuples have arrived. Directly process the edges.
                                 let session = output.session(&time);
-                                process_edges(
-                                    &*graph_pointer,
-                                    &mut edges,
-                                    &vertex_stash,
-                                    session,
-                                );
+                                process_edges(&*graph_pointer, &mut edges, &vertex_stash, session);
                             } else {
                                 // Store the edges until all vertex tuples have arrived.
                                 edge_stash.extend(edges.into_iter());
@@ -98,12 +93,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> MapEdgesBetweenGroups<S>
                             is_stream_done = true;
                             // Process the stored edges.
                             let session = output.session(&time);
-                            process_edges(
-                                &*graph_pointer,
-                                &mut edge_stash,
-                                &vertex_stash,
-                                session,
-                            );
+                            process_edges(&*graph_pointer, &mut edge_stash, &vertex_stash, session);
                         });
                     },
                 )

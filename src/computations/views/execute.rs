@@ -193,15 +193,11 @@ pub fn execute(
                     (v, e, aggregated_output_streams)
                 });
 
-            for vertex in
-                get_timely_vertex_stream(&*graph_pointer, worker_index, worker_count)
-            {
+            for vertex in get_timely_vertex_stream(&*graph_pointer, worker_index, worker_count) {
                 vertex_input.send(vertex);
             }
             vertex_input.close();
-            for edgeid in
-                get_timely_edgeid_stream(&*graph_pointer, worker_index, worker_count)
-            {
+            for edgeid in get_timely_edgeid_stream(&*graph_pointer, worker_index, worker_count) {
                 edge_input.send(edgeid);
             }
             edge_input.close();
