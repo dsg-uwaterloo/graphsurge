@@ -1,6 +1,5 @@
 use crate::computations::filtered_cubes::{DiffProcessingData, FilteredMatrixStream};
-use crate::filtered_cubes::timestamp::timestamp_mappings::GSTimestampIndex;
-use gs_analytics_api::DiffCount;
+use gs_analytics_api::{DiffCount, GsTimestampIndex};
 use hashbrown::HashMap;
 use itertools::Itertools;
 
@@ -28,7 +27,7 @@ pub fn process_edge_diff(
         };
 
         let sums = {
-            let calculate_sum = |data: &[GSTimestampIndex]| {
+            let calculate_sum = |data: &[GsTimestampIndex]| {
                 data.iter().fold(0, |sum, previous_timestamp_index| {
                     sum + cache.get(previous_timestamp_index).expect("Should be present")
                 })
@@ -54,8 +53,29 @@ mod tests {
     use crate::computations::filtered_cubes::execute::get_results_stash;
     use itertools::Itertools;
 
+    #[cfg(not(feature = "nd-timestamps"))]
     #[test]
-    fn test() {
+    fn test_1d() {
+        let edge = (100, vec![vec![0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1]]);
+        let dimension_lengths = vec![10];
+        let orders = vec![vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]];
+        let mut results_stash = get_results_stash(&orders, &dimension_lengths);
+
+        process_edge_diff(&edge, &mut results_stash, true);
+        let diffs = results_stash.into_iter().map(|diff_data| diff_data.results.1).collect_vec();
+
+        // The expected diff vec is mostly empty except for the values indicated in the vec below.
+        let mut expected_diffs = (0..10).map(|_| vec![]).collect_vec();
+        vec![(0, [(100, 1)]), (7, [(100, -1)]), (8, [(100, 1)])]
+            .into_iter()
+            .for_each(|(index, vec)| expected_diffs[index].extend(vec.iter()));
+
+        assert_eq!(diffs, expected_diffs);
+    }
+
+    #[cfg(feature = "nd-timestamps")]
+    #[test]
+    fn test_3d() {
         let edge = (
             100,
             vec![

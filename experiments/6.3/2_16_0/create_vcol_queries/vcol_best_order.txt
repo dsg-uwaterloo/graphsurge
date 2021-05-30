@@ -1,0 +1,21 @@
+deserialize from '../graph/serde';
+set threads 32 and process_id 0;
+create view collection vcol_best_order where
+    [u.year >= 1995 and u.year <= 2000 and v.year >= 1995 and v.year <= 2000],
+        [u.year >= 1995 and u.year <= 2001 and v.year >= 1995 and v.year <= 2001],
+        [u.year >= 1995 and u.year <= 2002 and v.year >= 1995 and v.year <= 2002],
+        [u.year >= 1995 and u.year <= 2003 and v.year >= 1995 and v.year <= 2003],
+        [u.year >= 1995 and u.year <= 2004 and v.year >= 1995 and v.year <= 2004],
+        [u.year >= 1995 and u.year <= 2005 and v.year >= 1995 and v.year <= 2005],
+        [u.year >= 1996 and u.year <= 2005 and v.year >= 1996 and v.year <= 2005],
+        [u.year >= 1997 and u.year <= 2005 and v.year >= 1997 and v.year <= 2005],
+        [u.year >= 1998 and u.year <= 2005 and v.year >= 1998 and v.year <= 2005],
+        [u.year >= 1999 and u.year <= 2005 and v.year >= 1999 and v.year <= 2005],
+        [u.year >= 2000 and u.year <= 2005 and v.year >= 2000 and v.year <= 2005],
+        [u.year >= 2001 and u.year <= 2006 and v.year >= 2001 and v.year <= 2006],
+        [u.year >= 2002 and u.year <= 2007 and v.year >= 2002 and v.year <= 2007],
+        [u.year >= 2003 and u.year <= 2008 and v.year >= 2003 and v.year <= 2008],
+        [u.year >= 2004 and u.year <= 2009 and v.year >= 2004 and v.year <= 2009],
+        [u.year >= 2005 and u.year <= 2010 and v.year >= 2005 and v.year <= 2010]
+    ;
+serialize cube vcol_best_order to 'vcol_data/vcol_best_order_serde' threads 10;

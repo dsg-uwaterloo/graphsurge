@@ -1,6 +1,6 @@
 use crate::computations::views::execute::execute;
 use crate::computations::views::ExecutionType;
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use crate::global_store::GlobalStore;
 use crate::query_handler::create_aggregated_cube::CreateAggregatedCubeAst;
 use crate::query_handler::create_view::executor::fmt_graph;
@@ -8,7 +8,7 @@ use crate::query_handler::{GraphSurgeQuery, GraphSurgeResult};
 use std::fmt::Write;
 
 impl GraphSurgeQuery for CreateAggregatedCubeAst {
-    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GraphSurgeError> {
+    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GSError> {
         let (vertices, edges, aggregations) = execute(
             self.ast.clone(),
             global_store,

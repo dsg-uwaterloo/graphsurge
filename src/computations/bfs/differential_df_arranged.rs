@@ -1,4 +1,4 @@
-use crate::computations::bfs::BFS;
+use crate::computations::bfs::Bfs;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::iterate::Iterate;
 use differential_dataflow::operators::reduce::Reduce;
@@ -7,7 +7,7 @@ use differential_dataflow::Collection;
 use gs_analytics_api::{ComputationInput, GraphsurgeComputation, PropertyInput};
 use timely::dataflow::Scope;
 
-impl GraphsurgeComputation for BFS {
+impl GraphsurgeComputation for Bfs {
     /// Code adapted from [Differential Dataflow](https://github.com/TimelyDataflow/differential-dataflow/blob/master/examples/bfs.rs).
     fn graph_analytics<G: Scope>(
         &self,

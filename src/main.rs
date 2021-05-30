@@ -8,34 +8,50 @@
     clippy::cargo,
     clippy::restriction
 )]
-// Selectively disable warnings for some lints.
+// Now selectively disable unneeded lints.
 #![allow(
-    clippy::indexing_slicing, // Allow `vec[i]` indexing.
-    clippy::module_name_repetitions,  // Allow name repetitions in module and type names.
-    clippy::use_debug, // Debug formatting is useful.
-    clippy::float_arithmetic, // Needed.
-    clippy::integer_arithmetic, // Needed.
-    clippy::integer_division, // Needed.
-    clippy::multiple_crate_versions, // Beyond our control.
-    clippy::missing_docs_in_private_items, // Disabled.
-    clippy::missing_inline_in_public_items, // Not considered for now.
-    clippy::implicit_return, // Allow.
-    clippy::too_many_arguments, // Allow.
-    clippy::use_self, // Too pedantic.
-    clippy::shadow_same,
-    clippy::result_expect_used,
-    clippy::unknown_clippy_lints,
-    clippy::exit
+    clippy::indexing_slicing,               // Allow `vec[i]` indexing.
+    clippy::module_name_repetitions,        // Allow.
+    clippy::use_debug,                      // Allow.
+    clippy::float_arithmetic,               // Allow.
+    clippy::integer_arithmetic,             // Allow.
+    clippy::integer_division,               // Allow.
+    clippy::implicit_return,                // Allow.
+    clippy::too_many_arguments,             // Allow.
+    clippy::use_self,                       // Allow.
+    clippy::shadow_same,                    // Allow.
+    clippy::too_many_lines,                 // Allow.
+    clippy::multiple_crate_versions,        // Disabled.
+    clippy::missing_docs_in_private_items,  // Disabled.
+    clippy::missing_errors_doc,             // Disabled.
+    clippy::missing_panics_doc,             // Disabled.
+    clippy::missing_inline_in_public_items, // Disabled.
+    clippy::cognitive_complexity,           // Disabled.
+    clippy::expect_used,                    // Should use `expect` rather than `unwrap`.
+    clippy::panic,                          // Allow.
+    clippy::unreachable,                    // Allow.
+    clippy::todo,                           // Allow.
+    clippy::must_use_candidate,             // Allow.
+    clippy::inline_always,                  // Allow.
+    clippy::as_conversions,                 // Allow but only when absolutely necessary.
+    clippy::implicit_hasher,                // Default hasher is fine for now.
+    clippy::blanket_clippy_restriction_lints,
+    clippy::pattern_type_mismatch,
+    clippy::unwrap_in_result,
+    clippy::map_err_ignore,
+    clippy::exhaustive_structs,
+    clippy::exhaustive_enums,
+    clippy::upper_case_acronyms,
 )]
 // Mark some lints as errors.
 #![deny(clippy::print_stdout)]
 
 use clap::{arg_enum, value_t, App, Arg, ArgMatches};
-use graphsurge::error::GraphSurgeError;
+use graphsurge::error::GSError;
 use graphsurge::global_store::GlobalStore;
 use graphsurge::util::io::get_file_lines;
 use graphsurge::util::logger::init_logger_with_level;
-use graphsurge::util::timer::GSTimer;
+use graphsurge::util::timer::GsTimer;
 use log::{info, Level};
 use rustyline::error::ReadlineError;
 use rustyline::Config;
@@ -85,7 +101,7 @@ arg_enum! {
     }
 }
 
-fn main() -> Result<(), GraphSurgeError> {
+fn main() -> Result<(), GSError> {
     // Parse command line arguments.
     let matches = App::new("graphsurge")
         .arg(
@@ -94,6 +110,7 @@ fn main() -> Result<(), GraphSurgeError> {
                 .case_insensitive(true),
         )
         .args_from_usage("[query_file] 'Reads queries from a file'")
+        .args_from_usage("[query_file_name] 'Reads file name'")
         .get_matches();
 
     setup_logger(&matches)?;
@@ -115,11 +132,10 @@ fn main() -> Result<(), GraphSurgeError> {
     rl.load_history(HISTORY_FILE).unwrap_or_default();
 
     'cli_loop: loop {
-        let line_result = if let Some(ref mut lines) = file_queries {
-            lines.next().clone().ok_or(ReadlineError::Eof)
-        } else {
-            rl.readline(query_state.get_prompt())
-        };
+        let line_result = file_queries.as_mut().map_or_else(
+            || rl.readline(query_state.get_prompt()),
+            |lines| lines.next().ok_or(ReadlineError::Eof),
+        );
         match line_result {
             Ok(query) => {
                 if query.is_empty() {
@@ -148,7 +164,7 @@ fn main() -> Result<(), GraphSurgeError> {
                     info!("[Query] {}", query_string);
                 }
 
-                let timer = GSTimer::now();
+                let timer = GsTimer::now();
                 let result = graphsurge::process_query(&mut global_store, &mut query_string);
                 match result {
                     Ok(query_result) => {
@@ -186,7 +202,7 @@ fn main() -> Result<(), GraphSurgeError> {
     Ok(())
 }
 
-fn setup_logger(matches: &ArgMatches) -> Result<(), GraphSurgeError> {
+fn setup_logger(matches: &ArgMatches) -> Result<(), GSError> {
     // Set log level.
     let log_level = match value_t!(matches, "loglevel", LogLevel).unwrap_or(LogLevel::Info) {
         LogLevel::Error => Level::Error,

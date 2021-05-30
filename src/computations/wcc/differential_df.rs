@@ -1,4 +1,4 @@
-use crate::computations::wcc::WCC;
+use crate::computations::wcc::Wcc;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::consolidate::Consolidate;
 use differential_dataflow::operators::iterate::Iterate;
@@ -8,7 +8,7 @@ use differential_dataflow::Collection;
 use gs_analytics_api::{BasicComputation, SimpleEdge};
 use timely::dataflow::Scope;
 
-impl BasicComputation for WCC {
+impl BasicComputation for Wcc {
     fn basic_computation<G: Scope>(
         &self,
         edges: &Collection<G, SimpleEdge>,

@@ -14,28 +14,44 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
+        name: Checkout code
 
       - uses: actions-rs/toolchain@v1
+        name: Install the rust toolchain
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
           components: rustfmt, clippy
 
-      - uses: actions-rs/cargo@v1
+      - uses: actions/cache@v2
+        name: Cache dependencies
         with:
-          command: build
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions-rs/cargo@v1
+        name: cargo test
         with:
           command: test
 
       - uses: actions-rs/cargo@v1
+        name: cargo fmt --check
         with:
           command: fmt
           args: --all -- --check
 
       - uses: actions-rs/cargo@v1
+        name: cargo clippy
+        continue-on-error: ${{ matrix.rust != 'stable' }}
         with:
           command: clippy
           args: -- -D warnings
+
+      - name: Clean cache
+        run: |
+          rm -rf target/debug/*graphsurge*
+          rm -rf target/{.fingerprint,deps,incremental}/graphsurge*

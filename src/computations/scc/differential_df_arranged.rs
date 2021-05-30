@@ -1,5 +1,4 @@
-use crate::computations::scc::SCC;
-use crate::computations::TimelyTimeStamp;
+use crate::computations::scc::Scc;
 use differential_dataflow::algorithms::graphs::propagate::propagate;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::arrange::ArrangeByKey;
@@ -8,14 +7,14 @@ use differential_dataflow::operators::{Consolidate, JoinCore};
 use differential_dataflow::Collection;
 use gs_analytics_api::{
     ComputationInput, ComputationTypes, EdgeArrangementEnter, GraphsurgeComputation,
+    TimelyTimeStamp,
 };
-
 use timely::dataflow::Scope;
 use timely::order::Product;
 use timely::progress::timestamp::Refines;
 use timely::progress::Timestamp;
 
-impl GraphsurgeComputation for SCC {
+impl GraphsurgeComputation for Scc {
     /// Code adapted from [Differential Dataflow](https://github.com/TimelyDataflow/differential-dataflow/blob/master/src/algorithms/graphs/scc.rs).
     fn graph_analytics<G: Scope>(
         &self,
@@ -43,9 +42,9 @@ impl GraphsurgeComputation for SCC {
 
 /// Code adapted from [Differential Dataflow](https://github.com/TimelyDataflow/differential-dataflow/blob/master/src/algorithms/graphs/scc.rs).
 fn trim_edges<G, T>(
-    cycle: &Collection<G, <SCC as ComputationTypes>::Result>,
+    cycle: &Collection<G, <Scc as ComputationTypes>::Result>,
     edges: &EdgeArrangementEnter<G, T>,
-) -> Collection<G, <SCC as ComputationTypes>::Result>
+) -> Collection<G, <Scc as ComputationTypes>::Result>
 where
     G: Scope,
     G::Timestamp: Lattice + Ord + Refines<T>,

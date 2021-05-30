@@ -1,21 +1,21 @@
 use crate::computations::views::execute::execute;
 use crate::computations::views::{EdgeViewOutput, ExecutionType, VertexViewOutput};
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use crate::global_store::GlobalStore;
 use crate::query_handler::create_view::CreateViewAst;
 use crate::query_handler::{GraphSurgeQuery, GraphSurgeResult};
-use crate::util::io::GSWriter;
+use crate::util::io::GsWriter;
 use itertools::Itertools;
 use log::info;
 
 impl GraphSurgeQuery for CreateViewAst {
-    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GraphSurgeError> {
+    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GSError> {
         let (vertices, edges, _) = execute(self.clone(), global_store, ExecutionType::SingleView)?;
 
         if let Some(save_path) = &self.save_to {
             info!("Writing view to '{}'...", save_path);
             let dot_path = format!("{}/{}-view.dot", save_path, self.name);
-            let mut writer = GSWriter::new(dot_path)?;
+            let mut writer = GsWriter::new(dot_path)?;
             writer.write_file_line("digraph G {")?;
             let vertex_iter = vertices.iter().map(|(vertex_id, properties, property_strings)| {
                 format!(

@@ -124,24 +124,24 @@ mod tests {
 
     #[test]
     fn equal_string_comparisons() {
-        let left = PropertyValue::String("testing".to_string());
-        let right = PropertyValue::String("testing".to_string());
+        let left = PropertyValue::String("testing".to_owned());
+        let right = PropertyValue::String("testing".to_owned());
 
         assert_equal(&left, &right);
     }
 
     #[test]
     fn less_string_comparisons() {
-        let left = PropertyValue::String("abc testing".to_string());
-        let right = PropertyValue::String("xyz testing".to_string());
+        let left = PropertyValue::String("abc testing".to_owned());
+        let right = PropertyValue::String("xyz testing".to_owned());
 
         assert_less_than(&left, &right);
     }
 
     #[test]
     fn greater_string_comparisons() {
-        let left = PropertyValue::String("986".to_string());
-        let right = PropertyValue::String("11465753".to_string());
+        let left = PropertyValue::String("986".to_owned());
+        let right = PropertyValue::String("11465753".to_owned());
 
         assert_greater_than(&left, &right);
     }

@@ -1,12 +1,11 @@
 use crate::computations::ComputationProperties;
-use crate::error::computation_error;
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::iterate::Variable;
 use differential_dataflow::operators::{Consolidate, Join, JoinCore, Reduce, Threshold};
 use differential_dataflow::Collection;
-use gs_analytics_api::VertexId;
 use gs_analytics_api::{ComputationTypes, EdgeArrangement};
+use gs_analytics_api::{TimelyComputation, VertexId};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use std::convert::TryFrom;
@@ -16,32 +15,23 @@ use timely::order::Product;
 mod differential_df;
 mod differential_df_arranged;
 
+const NAME: &str = "SPSP";
+const PROPERTY: &str = "goals";
 type Goal = (VertexId, VertexId);
 type PathLength = u32;
 
 #[derive(Clone)]
-pub struct SPSP {
+pub struct Spsp {
     goals: HashSet<Goal>,
 }
 
-impl SPSP {
-    pub fn instance(
-        properties: &HashMap<String, ComputationProperties>,
-    ) -> Result<Self, GraphSurgeError> {
-        let property = "goals";
+impl Spsp {
+    pub fn instance(properties: &HashMap<String, ComputationProperties>) -> Result<Self, GSError> {
         if properties.len() != 1 {
-            return Err(computation_error(format!(
-                "SPSP needs one property '{}', but found {} properties",
-                property,
-                properties.len()
-            )));
+            return Err(GSError::PropertyCount(NAME, 1, vec![PROPERTY], properties.len()));
         }
-        let value = properties.get(property).ok_or_else(|| {
-            computation_error(format!(
-                "SPSP needs property '{}' but found '{:?}'",
-                property,
-                properties.keys().collect::<Vec<_>>()
-            ))
+        let value = properties.get(PROPERTY).ok_or_else(|| {
+            GSError::Property(NAME, PROPERTY, properties.keys().cloned().collect::<Vec<_>>())
         })?;
         if let ComputationProperties::Pairs(goals) = value {
             Ok(Self {
@@ -57,17 +47,17 @@ impl SPSP {
                     .collect(),
             })
         } else {
-            Err(computation_error(format!(
-                "SPSP {} should be pairs but found '{}'",
-                property,
-                value.get_type()
-            )))
+            Err(GSError::PropertyType(NAME, PROPERTY, "pairs", value.get_type()))
         }
     }
 }
 
-impl ComputationTypes for SPSP {
+impl ComputationTypes for Spsp {
     type Result = (Goal, PathLength);
+}
+
+impl TimelyComputation for Spsp {
+    type TimelyResult = ();
 }
 
 /// Bi-directional Dijkstra search using arranged forward and reverse edge collections.

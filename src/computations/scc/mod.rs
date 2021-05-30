@@ -1,30 +1,30 @@
 use crate::computations::ComputationProperties;
-use crate::error::computation_error;
-use crate::error::GraphSurgeError;
-use gs_analytics_api::{ComputationTypes, VertexId};
+use crate::error::GSError;
+use gs_analytics_api::{ComputationTypes, TimelyComputation, VertexId};
 use hashbrown::HashMap;
 
 mod differential_df;
 mod differential_df_arranged;
 
-#[derive(Clone)]
-pub struct SCC;
+const NAME: &str = "SCC";
 
-impl SCC {
-    pub fn instance(
-        properties: &HashMap<String, ComputationProperties>,
-    ) -> Result<Self, GraphSurgeError> {
+#[derive(Clone)]
+pub struct Scc;
+
+impl Scc {
+    pub fn instance(properties: &HashMap<String, ComputationProperties>) -> Result<Self, GSError> {
         if properties.is_empty() {
             Ok(Self {})
         } else {
-            Err(computation_error(format!(
-                "SCC does not need any property, but found {} properties",
-                properties.len()
-            )))
+            Err(GSError::PropertyCount(NAME, 0, vec![], properties.len()))
         }
     }
 }
 
-impl ComputationTypes for SCC {
+impl ComputationTypes for Scc {
     type Result = (VertexId, VertexId);
+}
+
+impl TimelyComputation for Scc {
+    type TimelyResult = ();
 }

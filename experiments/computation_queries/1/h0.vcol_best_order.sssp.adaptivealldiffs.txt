@@ -1,0 +1,3 @@
+deserialize cube from 'vcol_data/vcol_best_order_serde' threads 10;
+set threads 32 and process_id 0;
+run adaptive upto 5 comp_x 0.0 diff_x 0.0 limit 0 algo lr computation sssp(root=ROOT weight_cap=WEIGHT_CAP) on collection vcol_best_order noresults hosts 'h0:9000';

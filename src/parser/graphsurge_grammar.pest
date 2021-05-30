@@ -183,9 +183,21 @@ variable_or_value = { value | complex_variable }
 delete_collections = { KEYWORD_DELETE ~ KEYWORD_CUBES }
 
 run_computation = {
-    KEYWORD_RUN ~ (keyword_arranged_differential | keyword_adaptive ~ num_usize |
-    keyword_differential | keyword_individual | keyword_arranged_individual |
-    keyword_comparedifferential)? ~ KEYWORD_COMPUTATION ~ variable ~ computation_properties? ~
+    KEYWORD_RUN ~
+       (keyword_adaptive ~
+            KEYWORD_UPTO ~ num_usize ~
+            KEYWORD_COMP_X ~ num_usize ~ CHAR_DOT ~ num_usize ~
+            KEYWORD_DIFF_X ~ num_usize ~ CHAR_DOT ~ num_usize ~
+            KEYWORD_LIMIT ~ num_usize ~
+            KEYWORD_ALGO ~ variable |
+        keyword_2_stage_differential |
+        keyword_1_stage_differential |
+        keyword_basic |
+        keyword_timely |
+        keyword_individual |
+        keyword_basic_individual |
+        keyword_compare_differential)? ~ 
+    KEYWORD_COMPUTATION ~ variable ~ computation_properties? ~
     (KEYWORD_FROM ~  non_empty_string)? ~
     KEYWORD_ON ~ KEYWORD_COLLECTION ~ variable ~
     results? ~
@@ -211,6 +223,7 @@ num_usize = @{ "0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
 bool = { bool_true | bool_false }
 bool_true = { ^"true" }
 bool_false = { ^"false" }
+num_float = @{ char_minus? ~ num_usize }
 
 char_star = { "*" }
 char_less_equal = { "<=" }
@@ -267,6 +280,7 @@ KEYWORD_SERIALIZE = _{ ^"serialize" }
 KEYWORD_DESERIALIZE = _{ ^"deserialize" }
 KEYWORD_CREATE = _{ ^"create" }
 KEYWORD_DELETE = _{ ^"delete" }
+KEYWORD_UPTO = _{ ^"upto" }
 KEYWORD_CUBE = _{ ^"cube" }
 KEYWORD_CUBES = _{ ^"cubes" }
 KEYWORD_WHERE = _{ ^"where" }
@@ -294,6 +308,10 @@ KEYWORD_THREADS = _{ ^"threads" }
 KEYWORD_PROCESS_ID = _{ ^"process_id" }
 KEYWORD_PREFIX = _{ ^"prefix" }
 KEYWORD_WITH_FULL = _{ ^"with_full" }
+KEYWORD_COMP_X = _{ ^"comp_x" }
+KEYWORD_DIFF_X = _{ ^"diff_x" }
+KEYWORD_LIMIT = _{ ^"limit" }
+KEYWORD_ALGO = _{ ^"algo" }
 
 keyword_manually_ordered = { ^"manually_ordered" }
 keyword_materialized = { ^"materialized" }
@@ -302,12 +320,14 @@ keyword_threads = { ^"threads" }
 keyword_computations = { ^"computations" }
 keyword_collections = { ^"collections" }
 keyword_cubes = { ^"cubes" }
-keyword_comparedifferential = { ^"compare_differential" }
-keyword_differential = { ^"differential" }
-keyword_arranged_differential = { ^"arranged_differential" }
+keyword_compare_differential = { ^"compare_differential" }
+keyword_2_stage_differential = { ^"2_stage_differential" }
+keyword_1_stage_differential = { ^"1_stage_differential" }
+keyword_basic = { ^"basic" }
 keyword_adaptive = { ^"adaptive" }
-keyword_arranged_individual = { ^"arranged_individual" }
+keyword_basic_individual = { ^"basic_individual" }
 keyword_individual = { ^"individual" }
+keyword_timely = { ^"timely" }
 keyword_no_results = { ^"noresults" }
 keyword_diff_results = { ^"diffresults" }
 keyword_materialize_full_view = { ^"materialize_full_view" }

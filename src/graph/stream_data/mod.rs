@@ -8,25 +8,32 @@ pub mod edge_data;
 pub mod filter;
 pub mod vertex_data;
 
-pub fn get_timely_vertex_stream<'a>(
-    graph: &'a Graph,
+pub fn get_timely_vertex_stream(
+    graph: &Graph,
     worker_index: usize,
     worker_count: usize,
-) -> impl Iterator<Item = VertexId> + 'a {
+) -> impl Iterator<Item = VertexId> {
     let (left_index, right_index) =
         get_worker_indices(graph.edges.len(), worker_index, worker_count);
     VertexId::try_from(left_index).expect("Overflow")
         ..VertexId::try_from(right_index).expect("Overflow")
 }
 
-pub fn get_timely_edgeid_stream<'a>(
-    graph: &'a Graph,
+pub fn get_timely_edgeid_stream(
+    graph: &Graph,
     worker_index: usize,
     worker_count: usize,
-) -> impl Iterator<Item = EdgeId> + 'a {
+) -> impl Iterator<Item = EdgeId> {
     let (left_index, right_index) =
         get_worker_indices(graph.edges.len(), worker_index, worker_count);
-    info!("[worker {}] loading {} edges", worker_index, (right_index - left_index));
+    if worker_index == 0 {
+        info!(
+            "[worker {}] loading {}/{} edges",
+            worker_index,
+            (right_index - left_index),
+            graph.edges.len()
+        );
+    }
     EdgeId::try_from(left_index).expect("Overflow")
         ..EdgeId::try_from(right_index).expect("Overflow")
 }

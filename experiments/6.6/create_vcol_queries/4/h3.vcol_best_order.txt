@@ -1,0 +1,15 @@
+deserialize from 'graph/serde';
+set threads 32 and process_id 3;
+create view collection vcol_best_order where
+    [u.city = v.city and affinity < 3],
+        [u.city = v.city and affinity < 6],
+        [u.city = v.city and affinity < 9],
+        [u.state = v.state and affinity < 3],
+        [u.state = v.state and affinity < 6],
+        [u.state = v.state and affinity < 9],
+        [u.country = v.country and affinity < 3],
+        [u.country = v.country and affinity < 6],
+        [u.country = v.country and affinity < 9]
+    
+    hosts 'h0:9000' 'h1:9000' 'h2:9000' 'h3:9000';
+

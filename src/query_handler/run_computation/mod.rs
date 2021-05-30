@@ -1,14 +1,8 @@
-use crate::computations::{ComputationProperties, ComputationType, SplitIndices};
+use crate::computations::{ComputationProperties, SplitIndices};
+use gs_analytics_api::{ComputationType, MaterializeResults};
 use hashbrown::HashMap;
 
 pub mod executor;
-
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum MaterializeResults {
-    None,
-    Diff,
-    Full,
-}
 
 #[derive(new)]
 pub struct RunComputationAst {
@@ -22,6 +16,10 @@ pub struct RunComputationAst {
     hosts: Vec<String>,
     splits: Option<SplitIndices>,
     batch_size: Option<usize>,
+    comp_multipler: Option<f64>,
+    diff_multipler: Option<f64>,
+    limit: usize,
+    use_lr: bool,
 }
 
 impl std::fmt::Display for RunComputationAst {

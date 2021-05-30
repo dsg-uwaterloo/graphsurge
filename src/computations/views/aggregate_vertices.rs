@@ -1,8 +1,8 @@
 use crate::computations::views::{AggregatedVertexOutput, VertexGroupReduceOutput};
-use crate::computations::TimelyTimeStamp;
 use crate::graph::stream_data::aggregation::get_aggregates;
 use crate::graph::GraphPointer;
 use crate::query_handler::create_view::VertexSections;
+use gs_analytics_api::TimelyTimeStamp;
 use std::num::NonZeroU8;
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::generic::operator::Operator;
@@ -51,7 +51,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> AggregateVertices<S>
                         }
                         session.give((created_vertex_id, aggregates, gv));
                     }
-                })
+                });
             }
         })
     }

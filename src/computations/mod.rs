@@ -1,101 +1,56 @@
-use crate::computations::dataflow_arranged_adaptive::arranged_adaptive_run;
-use crate::computations::dataflow_differential_arranged::differential_run_arranged;
+use crate::computations::dataflow_arranged_adaptive::differential_run_adaptive;
+use crate::computations::dataflow_differential_1_stage::differential_run_1_stage;
+use crate::computations::dataflow_differential_2_stages::differential_run_2_stage;
 use crate::filtered_cubes::materialise::{DiffEdgesPointer, DiffIteratorPointer};
-use crate::filtered_cubes::timestamp::timestamp_mappings::GSTimestampIndex;
 use crate::filtered_cubes::timestamp::GSTimestamp;
-use crate::filtered_cubes::{CubePointer, FilteredCubeData};
+use crate::filtered_cubes::CubePointer;
 use crate::graph::properties::property_value::PropertyValue;
-use crate::query_handler::run_computation::MaterializeResults;
-use crate::util::io::GSWriter;
-use crate::util::timer::GSDuration;
+use crate::util::io::GsWriter;
+use crate::util::timer::GsDuration;
 use crate::{
-    computations::dataflow_differential::differential_run,
-    error::{computation_error, GraphSurgeError},
+    computations::dataflow_differential_basic::differential_run_basic,
+    error::GSError,
     filtered_cubes::{materialise::CubeDiffIterators, FilteredCube},
-    graph::Graph,
     query_handler::GraphSurgeResult,
-    util::timer::GSTimer,
+    util::timer::GsTimer,
 };
-use gs_analytics_api::{BasicComputation, ComputationTypes, DiffCount, GraphsurgeComputation};
+use gs_analytics_api::{
+    BasicComputation, ComputationRuntimeData, ComputationType, ComputationTypes, DiffCount,
+    FilteredCubeData, GraphsurgeComputation, GsTimestampIndex, MaterializeResults,
+    TimelyComputation,
+};
 use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
 use log::info;
-use std::fmt::Debug;
 use std::hash::Hash;
 
 pub mod bfs;
 pub mod builder;
 pub mod dataflow_arranged_adaptive;
-pub mod dataflow_differential;
-pub mod dataflow_differential_arranged;
+pub mod dataflow_differential_1_stage;
+pub mod dataflow_differential_2_stages;
+pub mod dataflow_differential_basic;
 pub mod filtered_cubes;
 pub mod pagerank;
 pub mod scc;
 pub mod spsp;
+pub mod sssp;
 pub mod views;
 pub mod wcc;
 
-pub type TimelyTimeStamp = usize;
+#[cfg(test)]
+mod tests;
+
 pub type DifferentialRunOutput<C, T> =
-    Vec<Result<(DifferentialResults<C, T>, Times<T>, GSDuration, SplitIndices), String>>;
+    Vec<Result<(DifferentialResults<C, T>, Times<T>, GsDuration, SplitIndices), String>>;
 pub type SplitIndices = HashSet<usize>;
-pub type Times<T> = Vec<(T, (GSDuration, GSDuration, GSDuration, GSDuration))>;
+pub type Times<T> = Vec<(T, (GsDuration, GsDuration, GsDuration, GsDuration))>;
 pub type ProcessedResults<C> = (DifferentialResults<C, GSTimestamp>, TimeResults, SplitIndices);
-pub type TimeResults = (HashMap<GSTimestamp, [Vec<GSDuration>; 4]>, Vec<GSDuration>);
+pub type TimeResults = (HashMap<GSTimestamp, [Vec<GsDuration>; 4]>, Vec<GsDuration>);
 pub type DifferentialResults<C, T> = HashMap<T, DifferentialResult<C>>;
 pub type DifferentialResult<C> = Vec<(<C as ComputationTypes>::Result, DiffCount)>;
 pub type ComputationResultSet<C> = HashSet<(<C as ComputationTypes>::Result, DiffCount)>;
-pub type ComputationResults<C> = HashMap<GSTimestampIndex, (ComputationResultSet<C>, GSTimestamp)>;
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum ComputationType {
-    Differential,
-    DifferentialArranged,
-    Adaptive,
-    Individual,
-    IndividualArranged,
-    CompareDifferential,
-}
-
-impl ComputationType {
-    pub fn description(self) -> &'static str {
-        match self {
-            ComputationType::Differential => "differential-with-diffs",
-            ComputationType::DifferentialArranged => "arranged-with-diffs",
-            ComputationType::Adaptive => "adaptive",
-            ComputationType::Individual => "differentially-individually",
-            ComputationType::IndividualArranged => "arranged-individually",
-            ComputationType::CompareDifferential => "compare-differential",
-        }
-    }
-}
-
-impl std::fmt::Display for ComputationType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            if let ComputationType::CompareDifferential = self {
-                String::new()
-            } else {
-                format!(" {:?}", self).to_lowercase()
-            }
-        )
-    }
-}
-
-#[derive(new, Copy, Clone)]
-pub struct ComputationRuntimeData<'a> {
-    pub graph: &'a Graph,
-    pub c_type: ComputationType,
-    pub materialize_results: MaterializeResults,
-    pub save_to: &'a Option<String>,
-    pub threads: usize,
-    pub process_id: usize,
-    pub hosts: &'a [String],
-    pub splits: &'a Option<HashSet<usize>>,
-    pub batch_size: Option<usize>,
-}
+pub type ComputationResults<C> = HashMap<GsTimestampIndex, (ComputationResultSet<C>, GSTimestamp)>;
 
 pub enum ComputationProperties {
     Value(PropertyValue),
@@ -119,72 +74,64 @@ impl ComputationProperties {
     pub fn get_type(&self) -> String {
         match self {
             ComputationProperties::Value(v) => v.value_type().to_string(),
-            ComputationProperties::Pairs(_) => "Pairs".to_string(),
+            ComputationProperties::Pairs(_) => "Pairs".to_owned(),
         }
     }
 }
 
-pub trait Computation:
-    BasicComputation + GraphsurgeComputation + Send + Sync + Clone + 'static
-{
+pub trait Computation: BasicComputation + GraphsurgeComputation + TimelyComputation {
     fn execute(
         &self,
         cube: &mut FilteredCube,
         runtime_data: ComputationRuntimeData,
-    ) -> Result<GraphSurgeResult, GraphSurgeError> {
+    ) -> Result<GraphSurgeResult, GSError> {
         match runtime_data.c_type {
-            ComputationType::Individual
-            | ComputationType::DifferentialArranged
-            | ComputationType::IndividualArranged => (), // Nothing to do.
-            ComputationType::Differential
+            ComputationType::IndividualBasic
+            | ComputationType::OneStageDifferential
+            | ComputationType::TwoStageDifferential
+            | ComputationType::Individual
+            | ComputationType::Timely => (), // Nothing to do.
+            ComputationType::Basic
             | ComputationType::Adaptive
             | ComputationType::CompareDifferential => {
                 cube.prepare_differential_data();
             }
         }
         match runtime_data.c_type {
-            ComputationType::Differential
-            | ComputationType::DifferentialArranged
+            ComputationType::Basic
+            | ComputationType::OneStageDifferential
+            | ComputationType::TwoStageDifferential
             | ComputationType::Adaptive => {
-                differential_diff_execute(cube, self, runtime_data, runtime_data.c_type)?;
-                Ok(GraphSurgeResult::new("DD with diffs done".to_string()))
+                differential_diff_execute(cube, self, &runtime_data)?;
             }
-            ComputationType::Individual | ComputationType::IndividualArranged => {
-                differential_individual_execute(
-                    cube,
-                    self,
-                    runtime_data,
-                    runtime_data.c_type == ComputationType::IndividualArranged,
-                )?;
-                Ok(GraphSurgeResult::new("DD individually done".to_string()))
+            ComputationType::IndividualBasic | ComputationType::Individual => {
+                differential_individual_execute(cube, self, &runtime_data)?;
             }
             ComputationType::CompareDifferential => {
-                execute_compare_differential(&cube, self, runtime_data)
+                return execute_compare_differential(&cube, self, &runtime_data)
             }
+            ComputationType::Timely => timely_execute(&cube, self, &runtime_data)?,
         }
+        Ok(GraphSurgeResult::new(format!("{} done", runtime_data.c_type.description())))
     }
 }
 
-impl<T: BasicComputation + GraphsurgeComputation + Send + Sync + Clone + 'static> Computation
-    for T
-{
-}
+impl<T: BasicComputation + GraphsurgeComputation + TimelyComputation> Computation for T {}
 
 pub fn execute_compare_differential<T: Computation>(
     cube: &FilteredCube,
     computation: &T,
-    runtime_data: ComputationRuntimeData,
-) -> Result<GraphSurgeResult, GraphSurgeError> {
-    let r1 =
-        differential_diff_execute(cube, computation, runtime_data, ComputationType::Differential)?;
-    let r2 = differential_individual_execute(cube, computation, runtime_data, false)?;
+    runtime_data: &ComputationRuntimeData,
+) -> Result<GraphSurgeResult, GSError> {
+    let r1 = differential_diff_execute(cube, computation, runtime_data)?;
+    let r2 = differential_individual_execute(cube, computation, runtime_data)?;
     compare::<T>(r1, r2)
 }
 
 fn compare<T: Computation>(
     mut r1: ComputationResults<T>,
     mut r2: ComputationResults<T>,
-) -> Result<GraphSurgeResult, GraphSurgeError> {
+) -> Result<GraphSurgeResult, GSError> {
     info!("Result Counts:");
     for (timestamp_index, (values, timestamp)) in r1.iter().sorted_by_key(|&(ts_index, _)| ts_index)
     {
@@ -232,27 +179,26 @@ fn compare<T: Computation>(
         );
     }
     if alright {
-        Ok(GraphSurgeResult::new("Results match".to_string()))
+        Ok(GraphSurgeResult::new("Results match".to_owned()))
     } else {
-        Err(computation_error("Results do not match".to_string()))
+        Err(GSError::ResultsMismatch)
     }
 }
 
 fn differential_individual_execute<C: Computation>(
     cube: &FilteredCube,
     computation: &C,
-    runtime_data: ComputationRuntimeData,
-    is_arranged: bool,
-) -> Result<ComputationResults<C>, GraphSurgeError>
+    runtime_data: &ComputationRuntimeData,
+) -> Result<ComputationResults<C>, GSError>
 where
     C::Result: Hash,
 {
-    info!("Differential individually:");
+    info!("Running {}:", runtime_data.c_type.description());
+    let timer = GsTimer::now();
 
     let mut full_results = Vec::new();
-    let timer = GSTimer::now();
-
-    let mut total_worker_time = GSDuration::default();
+    let is_arranged = runtime_data.c_type == ComputationType::Individual;
+    let mut total_worker_time = GsDuration::default();
     let mut merged_times = HashMap::new();
     let fixed_timestamp = GSTimestamp::default();
     let next_timestamp = GSTimestamp::new(&[1]);
@@ -264,14 +210,11 @@ where
             let len = data.len();
             let cube_data =
                 FilteredCubeData::new(vec![(0, fixed_timestamp, (Vec::new(), data), (len, 0))]);
-            differential_run_arranged(
+            differential_run_2_stage(
                 CubePointer::new(&cube_data),
                 computation.clone(),
                 fixed_timestamp,
-                materialize_results,
-                runtime_data.threads,
-                runtime_data.process_id,
-                runtime_data.hosts,
+                &runtime_data,
             )?
         } else {
             let diff_iterators = CubeDiffIterators::Inner(vec![(
@@ -279,23 +222,20 @@ where
                 next_timestamp,
                 DiffEdgesPointer::new(&data),
             )]);
-            differential_run(
+            differential_run_basic(
                 DiffIteratorPointer::new(&diff_iterators),
                 fixed_timestamp,
                 computation.clone(),
-                runtime_data.threads,
-                materialize_results,
+                &runtime_data,
             )?
         };
 
         let (mut results, (mut all_times, worker_times), _) =
             process_results::<C>(results, materialize_results)?;
 
-        let results = if let Some(result) = results.remove(&fixed_timestamp) {
-            result.into_iter().collect::<HashSet<_>>()
-        } else {
-            HashSet::new()
-        };
+        let results = results
+            .remove(&fixed_timestamp)
+            .map_or_else(HashSet::new, |result| result.into_iter().collect::<HashSet<_>>());
         full_results.push((*timestamp_index, (results, *timestamp)));
         total_worker_time += worker_times.into_iter().max().expect("Max not found");
         merged_times.insert(*timestamp, all_times.remove(&fixed_timestamp).expect("TS missing"));
@@ -304,11 +244,15 @@ where
         (merged_times, vec![total_worker_time]),
         fixed_timestamp,
         &cube,
-        "differential individually",
+        runtime_data.c_type.description(),
     );
-    info!("Done with differential individually in {}", timer.elapsed().to_seconds_string());
+    info!(
+        "Done with {} in {}",
+        runtime_data.c_type.description(),
+        timer.elapsed().to_seconds_string()
+    );
     if runtime_data.materialize_results != MaterializeResults::None {
-        print_save_results::<C>(&full_results, runtime_data.save_to)?;
+        print_save_results::<C>(&full_results, &runtime_data.save_to)?;
     }
 
     Ok(full_results.into_iter().collect())
@@ -317,49 +261,55 @@ where
 fn differential_diff_execute<C: Computation>(
     cube: &FilteredCube,
     computation: &C,
-    runtime_data: ComputationRuntimeData,
-    ctype: ComputationType,
-) -> Result<ComputationResults<C>, GraphSurgeError>
+    runtime_data: &ComputationRuntimeData,
+) -> Result<ComputationResults<C>, GSError>
 where
     C::Result: Hash,
 {
-    info!("Running {}:", ctype.description());
+    info!("Running {}:", runtime_data.c_type.description());
 
-    let timer = GSTimer::now();
+    let timer = GsTimer::now();
     let zeroth_ts = GSTimestamp::get_zeroth_timestamp();
     let materialize_results = runtime_data.materialize_results != MaterializeResults::None;
     #[allow(clippy::wildcard_enum_match_arm)]
-    let results = match ctype {
-        ComputationType::Differential => {
+    let results = match runtime_data.c_type {
+        ComputationType::Basic => {
+            // high level operators + insert with incrementing timely timestamps.
             let diff_data = cube.differential_data.as_ref().expect("Should have been materialized");
-            differential_run(
+            differential_run_basic(
                 DiffIteratorPointer::new(&diff_data.cube_diff_iterators),
                 zeroth_ts,
                 computation.clone(),
-                runtime_data.threads,
-                materialize_results,
+                &runtime_data,
             )?
         }
-        ComputationType::DifferentialArranged => differential_run_arranged(
-            CubePointer::new(&cube.data),
-            computation.clone(),
-            zeroth_ts,
-            materialize_results,
-            runtime_data.threads,
-            runtime_data.process_id,
-            runtime_data.hosts,
-        )?,
-        ComputationType::Adaptive => arranged_adaptive_run(
-            CubePointer::new(&cube.data),
-            runtime_data.splits.clone(),
-            computation.clone(),
-            materialize_results,
-            runtime_data.threads,
-            runtime_data.process_id,
-            runtime_data.hosts,
-            runtime_data.batch_size,
-        )?,
-        _ => unreachable!(),
+        ComputationType::TwoStageDifferential => {
+            // arranged operators + separate insert/computation stages + no timely timestamps.
+            differential_run_2_stage(
+                CubePointer::new(&cube.data),
+                computation.clone(),
+                zeroth_ts,
+                &runtime_data,
+            )?
+        }
+        ComputationType::OneStageDifferential => {
+            // arranged operators + insert with incrementing timely timestamps.
+            differential_run_1_stage(
+                CubePointer::new(&cube.data),
+                computation.clone(),
+                zeroth_ts,
+                &runtime_data,
+            )?
+        }
+        ComputationType::Adaptive => {
+            // arranged operators + insert/computation stages + no timely timestamps.
+            differential_run_adaptive(
+                CubePointer::new(&cube.data),
+                computation.clone(),
+                &runtime_data,
+            )?
+        }
+        c => return Err(GSError::UnknownComputation(c.to_string())),
     };
 
     let (mut diff_results, all_times, split_indices) =
@@ -372,10 +322,14 @@ where
             info!("{}: {} results", timestamp, data.len());
         }
     }
-    process_times(all_times, zeroth_ts, &cube, ctype.description());
-    info!("Done with {} in {}", ctype.description(), timer.elapsed().to_seconds_string());
+    process_times(all_times, zeroth_ts, &cube, runtime_data.c_type.description());
+    info!(
+        "Done with {} in {}",
+        runtime_data.c_type.description(),
+        timer.elapsed().to_seconds_string()
+    );
 
-    if let Some(save_path) = runtime_data.save_to {
+    if let Some(save_path) = &runtime_data.save_to {
         info!("Writing diff results to '{}'...", save_path);
         let empty_vec = Vec::new();
         for (_, timestamp) in &cube.timestamp_mappings.0 {
@@ -383,15 +337,15 @@ where
             info!("Writing {}, len={}", timestamp, data.len());
             let timestamp_path =
                 format!("{}/results-diff-{}.txt", save_path, timestamp.get_str('_'));
-            let mut writer = GSWriter::new(timestamp_path)?;
+            let mut writer = GsWriter::new(timestamp_path)?;
             writer.write_file_lines(data.iter().map(|(v, diff)| format!("{:?}, {:+}", v, diff)))?;
         }
     }
 
-    let mut full_results = Vec::<(GSTimestampIndex, (ComputationResultSet<C>, GSTimestamp))>::new();
+    let mut full_results = Vec::<(GsTimestampIndex, (ComputationResultSet<C>, GSTimestamp))>::new();
     if runtime_data.materialize_results == MaterializeResults::Full {
         info!("Materializing full results:");
-        let timer = GSTimer::now();
+        let timer = GsTimer::now();
         for (timestamp_index, (diff_neighbors, timestamp)) in
             cube.timestamp_mappings.0.iter().enumerate()
         {
@@ -401,7 +355,7 @@ where
             } else {
                 let previous_results = {
                     // Declare a closure that obtains previous results for a given set of timestamps.
-                    let get_previous_results = |data: &[GSTimestampIndex]| {
+                    let get_previous_results = |data: &[GsTimestampIndex]| {
                         data.iter()
                             .map(|&timestamp_index_positive| {
                                 (full_results
@@ -440,16 +394,54 @@ where
             full_results.push((timestamp_index, (full_result, *timestamp)));
         }
         info!("Results materialized in {}", timer.elapsed().to_seconds_string());
-        print_save_results::<C>(&full_results, runtime_data.save_to)?;
+        print_save_results::<C>(&full_results, &runtime_data.save_to)?;
     }
 
     Ok(full_results.into_iter().collect())
 }
 
+fn timely_execute<C: Computation>(
+    cube: &FilteredCube,
+    computation: &C,
+    runtime_data: &ComputationRuntimeData,
+) -> Result<(), GSError>
+where
+    C::Result: Hash,
+{
+    if runtime_data.c_type != ComputationType::Timely {
+        return Err(GSError::TypeMismatch("Timely".to_owned(), runtime_data.c_type.to_string()));
+    }
+    info!("Running {}:", runtime_data.c_type.description());
+
+    let timer = GsTimer::now();
+    let results = computation.timely_computation(&cube.data, runtime_data);
+
+    info!(
+        "Done with {} in {}",
+        runtime_data.c_type.description(),
+        timer.elapsed().to_seconds_string()
+    );
+
+    if let Some(save_path) = &runtime_data.save_to {
+        info!("Writing diff results to '{}'...", save_path);
+        let empty_vec = Vec::new();
+        for (_, timestamp) in &cube.timestamp_mappings.0 {
+            let data = results.get(timestamp).unwrap_or(&empty_vec); // Empty timestamps.
+            info!("Writing {}, len={}", timestamp, data.len());
+            let timestamp_path =
+                format!("{}/results-diff-{}.txt", save_path, timestamp.get_str('_'));
+            let mut writer = GsWriter::new(timestamp_path)?;
+            writer.write_file_lines(data.iter().map(|v| format!("{:?}", v)))?;
+        }
+    }
+
+    Ok(())
+}
+
 fn process_results<C: ComputationTypes>(
     worker_results: DifferentialRunOutput<C, GSTimestamp>,
     materialize_results: bool,
-) -> Result<ProcessedResults<C>, GraphSurgeError> {
+) -> Result<ProcessedResults<C>, GSError> {
     let mut final_results = HashMap::new();
     let mut merged_times = HashMap::new();
     let mut total_times = Vec::new();
@@ -457,9 +449,8 @@ fn process_results<C: ComputationTypes>(
     let mut all_split_indices = HashSet::new();
 
     for (index, worker_result) in worker_results.into_iter().enumerate() {
-        let (results, times, total_time, split_indices) = worker_result.map_err(|e| {
-            computation_error(format!("Results from differential has errors: {:?}", e))
-        })?;
+        let (results, times, total_time, split_indices) =
+            worker_result.map_err(GSError::TimelyResults)?;
         if materialize_results {
             let mut count = 0;
             for (time, vec) in results {
@@ -507,7 +498,7 @@ fn process_times(
     cube: &FilteredCube,
     msg: &str,
 ) {
-    let mut all_times = [[GSDuration::default(); 4]; 3];
+    let mut all_times = [[GsDuration::default(); 4]; 3];
     for (_, timestamp) in &cube.timestamp_mappings.0 {
         let loaded_times = merged_times
             .get(timestamp)
@@ -563,9 +554,9 @@ fn process_times(
 
 /// Common function to print full results and optionally save the results to disk.
 fn print_save_results<T: Computation>(
-    full_results: &[(GSTimestampIndex, (ComputationResultSet<T>, GSTimestamp))],
+    full_results: &[(GsTimestampIndex, (ComputationResultSet<T>, GSTimestamp))],
     save_to: &Option<String>,
-) -> Result<(), GraphSurgeError> {
+) -> Result<(), GSError> {
     for (_, (results, timestamp)) in full_results {
         info!("{}: {} results", timestamp, results.len());
     }
@@ -576,7 +567,7 @@ fn print_save_results<T: Computation>(
             info!("Writing {}, len={}", timestamp, results.len());
             let timestamp_path =
                 format!("{}/results-full-{}.txt", save_path, timestamp.get_str('_'));
-            let mut writer = GSWriter::new(timestamp_path)?;
+            let mut writer = GsWriter::new(timestamp_path)?;
             writer.write_file_lines(
                 results.iter().map(|(data, change)| format!("{:?}, {:+}", data, change)),
             )?;
@@ -584,914 +575,4 @@ fn print_save_results<T: Computation>(
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::computations::bfs::BFS;
-    use crate::computations::dataflow_arranged_adaptive::arranged_adaptive_run;
-    use crate::computations::dataflow_differential::differential_run;
-    use crate::computations::dataflow_differential_arranged::differential_run_arranged;
-    use crate::computations::scc::SCC;
-    use crate::computations::wcc::WCC;
-    use crate::computations::{
-        differential_diff_execute, process_results, Computation, ComputationRuntimeData,
-        ComputationType, DifferentialResults, SplitIndices,
-    };
-    use crate::filtered_cubes::materialise::DiffIteratorPointer;
-    use crate::filtered_cubes::timestamp::GSTimestamp;
-    use crate::filtered_cubes::CubePointer;
-    use crate::global_store::GlobalStore;
-    use crate::process_query;
-    use crate::query_handler::run_computation::MaterializeResults;
-    use gs_analytics_api::{ComputationTypes, DiffCount};
-    use hashbrown::{HashMap, HashSet};
-
-    #[test]
-    fn test_bfs_2d() {
-        let expected_diff_results = vec![
-            (
-                GSTimestamp::new(&[0, 0]),
-                vec![
-                    ((4, 1), 1),
-                    ((3, 3), 1),
-                    ((9, 3), 1),
-                    ((8, 4), 1),
-                    ((6, 0), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 1]),
-                vec![
-                    ((5, 2), -1),
-                    ((9, 3), -1),
-                    ((5, 1), 1),
-                    ((9, 4), 1),
-                    ((8, 5), 1),
-                    ((8, 4), -1),
-                ],
-            ),
-            (GSTimestamp::new(&[1, 0]), vec![((5, 2), -1)]),
-            (
-                GSTimestamp::new(&[1, 1]),
-                vec![
-                    ((8, 4), 1),
-                    ((8, 5), -1),
-                    ((3, 3), -1),
-                    ((3, 4), 1),
-                    ((9, 4), -1),
-                    ((9, 3), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-        ];
-
-        let expected_full_results = vec![
-            (
-                GSTimestamp::new(&[0, 0]),
-                vec![
-                    ((6, 0), 1),
-                    ((4, 1), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                    ((3, 3), 1),
-                    ((9, 3), 1),
-                    ((8, 4), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 1]),
-                vec![
-                    ((6, 0), 1),
-                    ((4, 1), 1),
-                    ((5, 1), 1),
-                    ((2, 2), 1),
-                    ((3, 3), 1),
-                    ((9, 4), 1),
-                    ((8, 5), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[1, 0]),
-                vec![((6, 0), 1), ((4, 1), 1), ((2, 2), 1), ((3, 3), 1), ((9, 3), 1), ((8, 4), 1)],
-            ),
-            (
-                GSTimestamp::new(&[1, 1]),
-                vec![
-                    ((6, 0), 1),
-                    ((4, 1), 1),
-                    ((5, 1), 1),
-                    ((2, 2), 1),
-                    ((9, 3), 1),
-                    ((3, 4), 1),
-                    ((8, 4), 1),
-                ],
-            ),
-        ];
-
-        let computation = BFS::new(6);
-        create_cube_and_assert(
-            &computation,
-            2,
-            2,
-            "data/test_data/bfs/2d_small",
-            &expected_diff_results,
-            &expected_full_results,
-            10000,
-        );
-    }
-
-    #[test]
-    fn test_bfs_1d() {
-        let expected_diff_results = vec![
-            (
-                GSTimestamp::new(&[0, 0]),
-                vec![
-                    ((4, 1), 1),
-                    ((3, 3), 1),
-                    ((9, 3), 1),
-                    ((8, 4), 1),
-                    ((6, 0), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (GSTimestamp::new(&[0, 1]), vec![((5, 2), -1)]),
-            (GSTimestamp::new(&[0, 2]), vec![((5, 1), 1), ((3, 4), 1), ((3, 3), -1)]),
-            (
-                GSTimestamp::new(&[0, 3]),
-                vec![
-                    ((8, 4), -1),
-                    ((9, 4), 1),
-                    ((8, 5), 1),
-                    ((9, 3), -1),
-                    ((3, 3), 1),
-                    ((3, 4), -1),
-                ],
-            ),
-        ];
-
-        let expected_full_results = vec![
-            (
-                GSTimestamp::new(&[0, 0]),
-                vec![
-                    ((6, 0), 1),
-                    ((4, 1), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                    ((3, 3), 1),
-                    ((9, 3), 1),
-                    ((8, 4), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 3]),
-                vec![
-                    ((6, 0), 1),
-                    ((4, 1), 1),
-                    ((5, 1), 1),
-                    ((2, 2), 1),
-                    ((3, 3), 1),
-                    ((9, 4), 1),
-                    ((8, 5), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 1]),
-                vec![((6, 0), 1), ((4, 1), 1), ((2, 2), 1), ((3, 3), 1), ((9, 3), 1), ((8, 4), 1)],
-            ),
-            (
-                GSTimestamp::new(&[0, 2]),
-                vec![
-                    ((6, 0), 1),
-                    ((4, 1), 1),
-                    ((5, 1), 1),
-                    ((2, 2), 1),
-                    ((9, 3), 1),
-                    ((3, 4), 1),
-                    ((8, 4), 1),
-                ],
-            ),
-        ];
-
-        let computation = BFS::new(6);
-        create_cube_and_assert(
-            &computation,
-            1,
-            4,
-            "data/test_data/bfs/1d_small",
-            &expected_diff_results,
-            &expected_full_results,
-            10010,
-        );
-    }
-
-    #[test]
-    fn test_wcc_2d() {
-        let expected_diff_results = vec![
-            (
-                GSTimestamp::new(&[0, 0]),
-                vec![
-                    ((4, 2), 1),
-                    ((3, 2), 1),
-                    ((9, 2), 1),
-                    ((8, 2), 1),
-                    ((6, 2), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[1, 0]),
-                vec![
-                    ((9, 2), -1),
-                    ((9, 3), 1),
-                    ((8, 2), -1),
-                    ((8, 3), 1),
-                    ((3, 2), -1),
-                    ((3, 3), 1),
-                ],
-            ),
-            (GSTimestamp::new(&[0, 1]), vec![((6, 2), -1), ((6, 4), 1), ((4, 2), -1), ((4, 4), 1)]),
-            (GSTimestamp::new(&[1, 1]), vec![]),
-        ];
-
-        let expected_full_results = vec![
-            (
-                GSTimestamp::new(&[0, 0]),
-                vec![
-                    ((4, 2), 1),
-                    ((3, 2), 1),
-                    ((9, 2), 1),
-                    ((8, 2), 1),
-                    ((6, 2), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[1, 0]),
-                vec![
-                    ((4, 2), 1),
-                    ((3, 3), 1),
-                    ((9, 3), 1),
-                    ((8, 3), 1),
-                    ((6, 2), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 1]),
-                vec![
-                    ((4, 4), 1),
-                    ((3, 2), 1),
-                    ((9, 2), 1),
-                    ((8, 2), 1),
-                    ((6, 4), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[1, 1]),
-                vec![
-                    ((4, 4), 1),
-                    ((3, 3), 1),
-                    ((9, 3), 1),
-                    ((8, 3), 1),
-                    ((6, 4), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-        ];
-
-        let computation = WCC {};
-        create_cube_and_assert(
-            &computation,
-            2,
-            2,
-            "data/test_data/wcc/2d_small",
-            &expected_diff_results,
-            &expected_full_results,
-            10020,
-        );
-
-        let computation = WCC {};
-        create_cube_and_assert(
-            &computation,
-            2,
-            2,
-            "data/test_data/wcc/2d_small",
-            &expected_diff_results,
-            &expected_full_results,
-            10030,
-        );
-    }
-
-    #[test]
-    fn test_wcc_1d() {
-        let expected_diff_results = vec![
-            (
-                GSTimestamp::new(&[0, 0]),
-                vec![
-                    ((4, 2), 1),
-                    ((3, 2), 1),
-                    ((9, 2), 1),
-                    ((8, 2), 1),
-                    ((6, 2), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 1]),
-                vec![
-                    ((9, 2), -1),
-                    ((9, 3), 1),
-                    ((8, 2), -1),
-                    ((8, 3), 1),
-                    ((3, 2), -1),
-                    ((3, 3), 1),
-                ],
-            ),
-            (GSTimestamp::new(&[0, 2]), vec![((6, 4), 1), ((4, 2), -1), ((4, 4), 1), ((6, 2), -1)]),
-            (
-                GSTimestamp::new(&[0, 3]),
-                vec![
-                    ((9, 3), -1),
-                    ((3, 2), 1),
-                    ((8, 2), 1),
-                    ((9, 2), 1),
-                    ((8, 3), -1),
-                    ((3, 3), -1),
-                ],
-            ),
-        ];
-
-        let expected_full_results = vec![
-            (
-                GSTimestamp::new(&[0, 0]),
-                vec![
-                    ((4, 2), 1),
-                    ((3, 2), 1),
-                    ((9, 2), 1),
-                    ((8, 2), 1),
-                    ((6, 2), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 1]),
-                vec![
-                    ((4, 2), 1),
-                    ((3, 3), 1),
-                    ((9, 3), 1),
-                    ((8, 3), 1),
-                    ((6, 2), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 3]),
-                vec![
-                    ((4, 4), 1),
-                    ((3, 2), 1),
-                    ((9, 2), 1),
-                    ((8, 2), 1),
-                    ((6, 4), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-            (
-                GSTimestamp::new(&[0, 2]),
-                vec![
-                    ((4, 4), 1),
-                    ((3, 3), 1),
-                    ((9, 3), 1),
-                    ((8, 3), 1),
-                    ((6, 4), 1),
-                    ((2, 2), 1),
-                    ((5, 2), 1),
-                ],
-            ),
-        ];
-
-        let computation = WCC {};
-        create_cube_and_assert(
-            &computation,
-            1,
-            4,
-            "data/test_data/wcc/1d_small",
-            &expected_diff_results,
-            &expected_full_results,
-            10040,
-        );
-
-        let computation = WCC {};
-        create_cube_and_assert(
-            &computation,
-            1,
-            4,
-            "data/test_data/wcc/1d_small",
-            &expected_diff_results,
-            &expected_full_results,
-            10050,
-        );
-    }
-
-    #[test]
-    fn test_scc_1() {
-        let expected_results = vec![(
-            GSTimestamp::new(&[0, 0]),
-            vec![
-                ((2, 5), 1),
-                ((7, 6), 1),
-                ((4, 3), 1),
-                ((1, 2), 1),
-                ((5, 1), 1),
-                ((4, 8), 1),
-                ((8, 4), 1),
-                ((3, 4), 1),
-                ((6, 7), 1),
-            ],
-        )];
-
-        let computation = SCC {};
-        create_cube_and_assert(
-            &computation,
-            1,
-            1,
-            "data/test_data/scc/1",
-            &expected_results,
-            &expected_results,
-            10060,
-        );
-    }
-
-    #[test]
-    fn test_scc_2() {
-        let expected_results = vec![(
-            GSTimestamp::new(&[0, 0]),
-            vec![
-                ((4, 5), 1),
-                ((4, 6), 1),
-                ((3, 0), 1),
-                ((5, 4), 1),
-                ((8, 9), 1),
-                ((2, 3), 1),
-                ((0, 2), 1),
-                ((6, 5), 1),
-                ((1, 3), 1),
-                ((9, 8), 1),
-                ((0, 1), 1),
-            ],
-        )];
-
-        let computation = SCC {};
-        create_cube_and_assert(
-            &computation,
-            1,
-            1,
-            "data/test_data/scc/2",
-            &expected_results,
-            &expected_results,
-            10070,
-        );
-    }
-
-    #[test]
-    fn test_scc_3() {
-        let expected_results = vec![(
-            GSTimestamp::new(&[0, 0]),
-            vec![
-                ((4, 3), 1),
-                ((6, 8), 1),
-                ((2, 4), 1),
-                ((1, 0), 1),
-                ((2, 1), 1),
-                ((5, 6), 1),
-                ((14, 12), 1),
-                ((9, 10), 1),
-                ((6, 7), 1),
-                ((3, 2), 1),
-                ((0, 2), 1),
-                ((7, 8), 1),
-                ((8, 5), 1),
-                ((13, 14), 1),
-                ((10, 9), 1),
-                ((12, 13), 1),
-            ],
-        )];
-
-        let computation = SCC {};
-        create_cube_and_assert(
-            &computation,
-            1,
-            1,
-            "data/test_data/scc/3",
-            &expected_results,
-            &expected_results,
-            10080,
-        );
-    }
-
-    #[test]
-    fn test_scc_adaptive() {
-        let computation = SCC {};
-
-        for (index, (splits, expected_results, expect_splits)) in vec![
-            (
-                Some(HashSet::new()),
-                vec![
-                    (
-                        GSTimestamp::new(&[0, 0]),
-                        vec![
-                            ((4, 5), 1),
-                            ((4, 6), 1),
-                            ((3, 0), 1),
-                            ((5, 4), 1),
-                            ((8, 9), 1),
-                            ((2, 3), 1),
-                            ((0, 2), 1),
-                            ((6, 5), 1),
-                            ((1, 3), 1),
-                            ((9, 8), 1),
-                            ((0, 1), 1),
-                        ],
-                    ),
-                    (
-                        GSTimestamp::new(&[0, 1]),
-                        vec![
-                            ((1, 3), -1),
-                            ((6, 5), -1),
-                            ((2, 5), 1),
-                            ((0, 2), -1),
-                            ((7, 6), 1),
-                            ((6, 7), 1),
-                            ((4, 5), -1),
-                            ((4, 8), 1),
-                            ((2, 3), -1),
-                            ((4, 3), 1),
-                            ((3, 0), -1),
-                            ((8, 4), 1),
-                            ((5, 4), -1),
-                            ((8, 9), -1),
-                            ((0, 1), -1),
-                            ((5, 1), 1),
-                            ((4, 6), -1),
-                            ((1, 2), 1),
-                            ((3, 4), 1),
-                            ((9, 8), -1),
-                        ],
-                    ),
-                    (GSTimestamp::new(&[0, 2]), vec![((7, 6), -1), ((6, 7), -1)]),
-                    (
-                        GSTimestamp::new(&[0, 3]),
-                        vec![
-                            ((8, 9), 1),
-                            ((4, 6), 1),
-                            ((2, 5), -1),
-                            ((4, 8), -1),
-                            ((4, 5), 1),
-                            ((4, 3), -1),
-                            ((5, 4), 1),
-                            ((3, 0), 1),
-                            ((8, 4), -1),
-                            ((5, 1), -1),
-                            ((0, 2), 1),
-                            ((9, 8), 1),
-                            ((1, 3), 1),
-                            ((0, 1), 1),
-                            ((6, 5), 1),
-                            ((1, 2), -1),
-                            ((3, 4), -1),
-                            ((2, 3), 1),
-                        ],
-                    ),
-                ],
-                HashSet::new(),
-            ),
-            (
-                Some(vec![2, 3].into_iter().collect()),
-                vec![
-                    (
-                        GSTimestamp::new(&[0, 0]),
-                        vec![
-                            ((4, 5), 1),
-                            ((4, 6), 1),
-                            ((3, 0), 1),
-                            ((5, 4), 1),
-                            ((8, 9), 1),
-                            ((2, 3), 1),
-                            ((0, 2), 1),
-                            ((6, 5), 1),
-                            ((1, 3), 1),
-                            ((9, 8), 1),
-                            ((0, 1), 1),
-                        ],
-                    ),
-                    (
-                        GSTimestamp::new(&[0, 1]),
-                        vec![
-                            ((1, 3), -1),
-                            ((6, 5), -1),
-                            ((2, 5), 1),
-                            ((0, 2), -1),
-                            ((7, 6), 1),
-                            ((6, 7), 1),
-                            ((4, 5), -1),
-                            ((4, 8), 1),
-                            ((2, 3), -1),
-                            ((4, 3), 1),
-                            ((3, 0), -1),
-                            ((8, 4), 1),
-                            ((5, 4), -1),
-                            ((8, 9), -1),
-                            ((0, 1), -1),
-                            ((5, 1), 1),
-                            ((4, 6), -1),
-                            ((1, 2), 1),
-                            ((3, 4), 1),
-                            ((9, 8), -1),
-                        ],
-                    ),
-                    (
-                        GSTimestamp::new(&[0, 2]),
-                        vec![
-                            ((1, 2), 1),
-                            ((2, 5), 1),
-                            ((3, 4), 1),
-                            ((4, 3), 1),
-                            ((8, 4), 1),
-                            ((4, 8), 1),
-                            ((5, 1), 1),
-                        ],
-                    ),
-                    (
-                        GSTimestamp::new(&[0, 3]),
-                        vec![
-                            ((5, 4), 1),
-                            ((0, 2), 1),
-                            ((4, 5), 1),
-                            ((8, 9), 1),
-                            ((1, 3), 1),
-                            ((2, 3), 1),
-                            ((9, 8), 1),
-                            ((0, 1), 1),
-                            ((4, 6), 1),
-                            ((6, 5), 1),
-                            ((3, 0), 1),
-                        ],
-                    ),
-                ],
-                vec![2, 3].into_iter().collect(),
-            ),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            create_cube_and_assert_adaptive(
-                &computation,
-                1,
-                4,
-                "data/test_data/scc/4",
-                &expected_results,
-                &splits,
-                &expect_splits,
-                index,
-            );
-        }
-    }
-
-    type ExpectedResults<C> = (GSTimestamp, Vec<(<C as ComputationTypes>::Result, DiffCount)>);
-
-    fn create_cube_and_assert<C: Computation>(
-        computation: &C,
-        m: usize,
-        n: usize,
-        dir: &str,
-        expected_diff_results: &[ExpectedResults<C>],
-        expected_full_results: &[ExpectedResults<C>],
-        port_offset: usize,
-    ) {
-        let mut global_store = GlobalStore::default();
-
-        let cube_name = "my_cube";
-        let mut cube_query = format!(
-            "load cube {name} {m} {n} from '{dir}' with prefix 'batch-0_';",
-            name = cube_name,
-            m = m,
-            n = n,
-            dir = dir,
-        );
-        process_query(&mut global_store, &mut cube_query).expect("Cube not loaded");
-
-        let cube =
-            global_store.filtered_cube_store.cubes.get_mut(cube_name).expect("Expected cube");
-
-        cube.prepare_differential_data();
-
-        let expected_diff_results = expected_diff_results
-            .iter()
-            .map(|(ts, values)| (*ts, values.iter().copied().collect::<HashSet<_>>()))
-            .collect::<HashMap<_, _>>();
-
-        let expected_full_results = expected_full_results
-            .iter()
-            .map(|(ts, values)| (*ts, values.iter().copied().collect::<HashSet<_>>()))
-            .collect::<HashMap<_, _>>();
-
-        for &threads in &[1, 4] {
-            let results = differential_run(
-                DiffIteratorPointer::new(
-                    &cube.differential_data.as_ref().expect("Data expected").cube_diff_iterators,
-                ),
-                GSTimestamp::get_zeroth_timestamp(),
-                computation.clone(),
-                threads,
-                true,
-            )
-            .expect("Computation failed");
-            let (computed_results, _, _) =
-                process_results::<C>(results, true).expect("Processing failed");
-
-            assert_results_match::<C>(
-                computed_results,
-                &expected_diff_results,
-                &format!("Failed to match results of computation using {} threads", threads),
-            );
-
-            let results = differential_run_arranged(
-                CubePointer::new(&cube.data),
-                computation.clone(),
-                GSTimestamp::get_zeroth_timestamp(),
-                true,
-                threads,
-                0,
-                &[],
-            )
-            .expect("Computation failed");
-            let (computed_results_arranged, _, _) =
-                process_results::<C>(results, true).expect("Processing failed");
-
-            assert_results_match::<C>(
-                computed_results_arranged,
-                &expected_diff_results,
-                &format!(
-                    "Failed to match results of arranged computation using {} threads",
-                    threads
-                ),
-            );
-        }
-
-        let threads = 2;
-        let hosts =
-            [format!("localhost:{}", port_offset), format!("localhost:{}", port_offset + 1)];
-
-        let cdata = cube.data.clone();
-        let comp = computation.clone();
-        let hosts2 = hosts.clone();
-        std::thread::spawn(move || {
-            differential_run_arranged(
-                CubePointer::new(&cdata),
-                comp,
-                GSTimestamp::get_zeroth_timestamp(),
-                true,
-                threads,
-                1,
-                &hosts2,
-            )
-            .expect("Computation failed");
-        });
-
-        let results = differential_run_arranged(
-            CubePointer::new(&cube.data),
-            computation.clone(),
-            GSTimestamp::get_zeroth_timestamp(),
-            true,
-            threads,
-            0,
-            &hosts,
-        )
-        .expect("Computation failed");
-        let (computed_results_arranged_multiprocess, _, _) =
-            process_results::<C>(results, true).expect("Processing failed");
-
-        assert_results_match::<C>(
-            computed_results_arranged_multiprocess,
-            &expected_diff_results,
-            &format!(
-                "Failed to match results of arranged computation using {} threads and 2 processes",
-                threads
-            ),
-        );
-
-        let full_results = differential_diff_execute(
-            cube,
-            computation,
-            ComputationRuntimeData::new(
-                &global_store.graph,
-                ComputationType::Differential,
-                MaterializeResults::Full,
-                &None,
-                1,
-                0,
-                &[],
-                &None,
-                None,
-            ),
-            ComputationType::Differential,
-        )
-        .expect("Computation failed");
-        assert_eq!(
-            full_results
-                .into_iter()
-                .map(|(_, (data, timestamp))| (timestamp, data.into_iter().collect::<HashSet<_>>()))
-                .collect::<HashMap<_, _>>(),
-            expected_full_results
-        );
-    }
-
-    fn create_cube_and_assert_adaptive<C: Computation>(
-        computation: &C,
-        m: usize,
-        n: usize,
-        dir: &str,
-        expected_diff_results: &[ExpectedResults<C>],
-        specified_splits: &Option<SplitIndices>,
-        expected_splits: &SplitIndices,
-        index: usize,
-    ) {
-        let mut global_store = GlobalStore::default();
-
-        let cube_name = "my_cube";
-        let mut cube_query = format!(
-            "load cube {name} {m} {n} from '{dir}' with prefix 'batch-0_';",
-            name = cube_name,
-            m = m,
-            n = n,
-            dir = dir,
-        );
-        process_query(&mut global_store, &mut cube_query).expect("Cube not loaded");
-
-        let cube =
-            global_store.filtered_cube_store.cubes.get_mut(cube_name).expect("Expected cube");
-
-        cube.prepare_differential_data();
-
-        let expected_diff_results = expected_diff_results
-            .iter()
-            .map(|(ts, values)| (*ts, values.iter().copied().collect::<HashSet<_>>()))
-            .collect::<HashMap<_, _>>();
-
-        for &threads in &[1, 4] {
-            let results = arranged_adaptive_run(
-                CubePointer::new(&cube.data),
-                specified_splits.clone(),
-                computation.clone(),
-                true,
-                threads,
-                0,
-                &[],
-                Some(2),
-            )
-            .expect("Computation failed");
-            let (computed_results_arranged, _, obtained_splits) =
-                process_results::<C>(results, true).expect("Processing failed");
-
-            assert_results_match::<C>(
-                computed_results_arranged,
-                &expected_diff_results,
-                &format!(
-                    "Failed to match results of arranged computation using {} threads in {}",
-                    threads, index
-                ),
-            );
-
-            assert_eq!(&obtained_splits, expected_splits);
-        }
-    }
-
-    fn assert_results_match<C: Computation>(
-        obtained: DifferentialResults<C, GSTimestamp>,
-        expected: &HashMap<GSTimestamp, HashSet<(C::Result, DiffCount)>>,
-        msg: &str,
-    ) {
-        assert_eq!(
-            &obtained
-                .into_iter()
-                .map(|(ts, values)| (ts, values.into_iter().collect::<HashSet<_>>()))
-                .collect::<HashMap<_, _>>(),
-            expected,
-            "{}",
-            msg,
-        );
-    }
 }

@@ -1,0 +1,30 @@
+deserialize from '../graph/serde';
+set threads 32 and process_id 0;
+create view collection vcol_manual_order where
+    [u.year >= 1996 and u.year <= 2000 and v.year >= 1996 and v.year <= 2000 and u.authors >= 0 and u.authors <= 5 and v.authors >= 0 and v.authors <= 5],
+        [u.year >= 1996 and u.year <= 2000 and v.year >= 1996 and v.year <= 2000 and u.authors >= 0 and u.authors <= 10 and v.authors >= 0 and v.authors <= 10],
+        [u.year >= 1996 and u.year <= 2000 and v.year >= 1996 and v.year <= 2000 and u.authors >= 0 and u.authors <= 15 and v.authors >= 0 and v.authors <= 15],
+        [u.year >= 1996 and u.year <= 2000 and v.year >= 1996 and v.year <= 2000 and u.authors >= 0 and u.authors <= 20 and v.authors >= 0 and v.authors <= 20],
+        [u.year >= 1996 and u.year <= 2000 and v.year >= 1996 and v.year <= 2000 and u.authors >= 0 and u.authors <= 25 and v.authors >= 0 and v.authors <= 25],
+        [u.year >= 2001 and u.year <= 2005 and v.year >= 2001 and v.year <= 2005 and u.authors >= 0 and u.authors <= 5 and v.authors >= 0 and v.authors <= 5],
+        [u.year >= 2001 and u.year <= 2005 and v.year >= 2001 and v.year <= 2005 and u.authors >= 0 and u.authors <= 10 and v.authors >= 0 and v.authors <= 10],
+        [u.year >= 2001 and u.year <= 2005 and v.year >= 2001 and v.year <= 2005 and u.authors >= 0 and u.authors <= 15 and v.authors >= 0 and v.authors <= 15],
+        [u.year >= 2001 and u.year <= 2005 and v.year >= 2001 and v.year <= 2005 and u.authors >= 0 and u.authors <= 20 and v.authors >= 0 and v.authors <= 20],
+        [u.year >= 2001 and u.year <= 2005 and v.year >= 2001 and v.year <= 2005 and u.authors >= 0 and u.authors <= 25 and v.authors >= 0 and v.authors <= 25],
+        [u.year >= 2006 and u.year <= 2010 and v.year >= 2006 and v.year <= 2010 and u.authors >= 0 and u.authors <= 5 and v.authors >= 0 and v.authors <= 5],
+        [u.year >= 2006 and u.year <= 2010 and v.year >= 2006 and v.year <= 2010 and u.authors >= 0 and u.authors <= 10 and v.authors >= 0 and v.authors <= 10],
+        [u.year >= 2006 and u.year <= 2010 and v.year >= 2006 and v.year <= 2010 and u.authors >= 0 and u.authors <= 15 and v.authors >= 0 and v.authors <= 15],
+        [u.year >= 2006 and u.year <= 2010 and v.year >= 2006 and v.year <= 2010 and u.authors >= 0 and u.authors <= 20 and v.authors >= 0 and v.authors <= 20],
+        [u.year >= 2006 and u.year <= 2010 and v.year >= 2006 and v.year <= 2010 and u.authors >= 0 and u.authors <= 25 and v.authors >= 0 and v.authors <= 25],
+        [u.year >= 2011 and u.year <= 2015 and v.year >= 2011 and v.year <= 2015 and u.authors >= 0 and u.authors <= 5 and v.authors >= 0 and v.authors <= 5],
+        [u.year >= 2011 and u.year <= 2015 and v.year >= 2011 and v.year <= 2015 and u.authors >= 0 and u.authors <= 10 and v.authors >= 0 and v.authors <= 10],
+        [u.year >= 2011 and u.year <= 2015 and v.year >= 2011 and v.year <= 2015 and u.authors >= 0 and u.authors <= 15 and v.authors >= 0 and v.authors <= 15],
+        [u.year >= 2011 and u.year <= 2015 and v.year >= 2011 and v.year <= 2015 and u.authors >= 0 and u.authors <= 20 and v.authors >= 0 and v.authors <= 20],
+        [u.year >= 2011 and u.year <= 2015 and v.year >= 2011 and v.year <= 2015 and u.authors >= 0 and u.authors <= 25 and v.authors >= 0 and v.authors <= 25],
+        [u.year >= 2016 and u.year <= 2020 and v.year >= 2016 and v.year <= 2020 and u.authors >= 0 and u.authors <= 5 and v.authors >= 0 and v.authors <= 5],
+        [u.year >= 2016 and u.year <= 2020 and v.year >= 2016 and v.year <= 2020 and u.authors >= 0 and u.authors <= 10 and v.authors >= 0 and v.authors <= 10],
+        [u.year >= 2016 and u.year <= 2020 and v.year >= 2016 and v.year <= 2020 and u.authors >= 0 and u.authors <= 15 and v.authors >= 0 and v.authors <= 15],
+        [u.year >= 2016 and u.year <= 2020 and v.year >= 2016 and v.year <= 2020 and u.authors >= 0 and u.authors <= 20 and v.authors >= 0 and v.authors <= 20],
+        [u.year >= 2016 and u.year <= 2020 and v.year >= 2016 and v.year <= 2020 and u.authors >= 0 and u.authors <= 25 and v.authors >= 0 and v.authors <= 25]
+    manually_ordered;
+serialize cube vcol_manual_order to 'vcol_data/vcol_manual_order_serde' threads 10;

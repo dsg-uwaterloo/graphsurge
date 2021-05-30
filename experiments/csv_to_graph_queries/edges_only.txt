@@ -1,0 +1,3 @@
+load graph with
+    edges from 'graph/edges.txt';
+serialize to 'graph/serde' threads 15;

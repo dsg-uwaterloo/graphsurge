@@ -11,17 +11,17 @@ categories = ["database-implementations"]
 edition = "2018"
 
 [dependencies]
-hashbrown = { version = "0.7", features = ["serde"] }
-rand="0.7"
+hashbrown = { version = "0.9", features = ["serde"] }
+rand="0.8"
 chrono = "0.4"
 log = { version = "0.4", features = ["std"] }
-psutil = "1.7"
-rustyline = "6.1"
-itertools = "0.9"
+psutil = "3.1"
+rustyline = "7.1"
+itertools = "0.10"
 derive-new = "0.5"
 csv = "1.1"
-crossbeam-utils = "0.7"
-crossbeam-channel = "0.4"
+crossbeam-utils = "0.8"
+crossbeam-channel = "0.5"
 clap = { version = "2.33", default-features = false }
 pest = "2.1"
 pest_derive = "2.1"
@@ -35,6 +35,9 @@ timely_sort="0.1"
 timely = "0.11"
 differential-dataflow = "0.11"
 gs_analytics_api = { path = "gs_analytics_api"}
+
+[features]
+nd-timestamps = []
 
 [[bin]]
 name = "graphsurge"

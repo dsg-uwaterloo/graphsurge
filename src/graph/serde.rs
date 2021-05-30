@@ -1,4 +1,4 @@
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use crate::global_store::{deserialize_object, serialize_object};
 use crate::graph::Graph;
 use crossbeam_utils::thread;
@@ -23,7 +23,7 @@ pub fn serialize(
     bin_dir: &str,
     thread_count: usize,
     block_size: Option<usize>,
-) -> Result<(), GraphSurgeError> {
+) -> Result<(), GSError> {
     let res = thread::scope(|s| {
         // Vertices.
         let vertices_thread = s.spawn(|r| {
@@ -78,7 +78,7 @@ pub fn serialize_blocks<'a, T: Serialize + Sync>(
     blocks_count_file: &'a str,
     len_file: &'a str,
     min_block_size: usize,
-) -> Result<(), GraphSurgeError> {
+) -> Result<(), GSError> {
     // Default block size is calculated based on number of available threads.
     let default_block_size = std::cmp::max(object.len() / thread_count, min_block_size);
     let block_size = user_block_size.unwrap_or(default_block_size);
@@ -118,11 +118,7 @@ pub fn serialize_blocks<'a, T: Serialize + Sync>(
     Ok(())
 }
 
-pub fn deserialize(
-    graph: &mut Graph,
-    bin_dir: &str,
-    thread_count: usize,
-) -> Result<(), GraphSurgeError> {
+pub fn deserialize(graph: &mut Graph, bin_dir: &str, thread_count: usize) -> Result<(), GSError> {
     let res = thread::scope(|s| {
         // Vertices.
         let vertices_thread = s.spawn(|r| {
@@ -168,7 +164,7 @@ pub fn deserialize_blocks<'a, T: DeserializeOwned + Sync + Send + 'a>(
     block_file: &'a str,
     blocks_count_file: &'a str,
     len_file: &'a str,
-) -> Result<Vec<T>, GraphSurgeError> {
+) -> Result<Vec<T>, GSError> {
     let len = deserialize_object(&bin_dir, len_file)?;
     let blocks_count = deserialize_object(&bin_dir, blocks_count_file)?;
     info!("Deserializing {} using {} threads", object_name, thread_count);
@@ -192,7 +188,7 @@ fn join_chunks<T>(mut chunks: Vec<(usize, usize, Vec<T>)>, len: usize) -> Vec<T>
     chunks.sort_by_key(|x| x.0);
     assert_eq!(chunks[0].0, 0);
     for i in 0..chunks.len() - 1 {
-        assert_eq!(chunks[i].1, chunks[i + 1].0)
+        assert_eq!(chunks[i].1, chunks[i + 1].0);
     }
     assert_eq!(chunks[chunks.len() - 1].1, len);
     chunks.into_iter().flat_map(|(_, _, chunk)| chunk).collect()

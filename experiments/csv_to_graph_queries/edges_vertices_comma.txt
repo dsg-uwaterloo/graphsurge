@@ -1,0 +1,5 @@
+load graph with
+    vertices from 'graph/vertices.txt' and
+    edges from 'graph/edges.txt'
+    separator ',';
+serialize to 'graph/serde' threads 15;

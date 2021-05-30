@@ -1,12 +1,12 @@
-use crate::error::{gs_error, GraphSurgeError};
+use crate::error::GSError;
 use chrono::Local;
 use log::{Level, Log, Metadata, Record};
 
-struct GSLogger {
+struct GsLogger {
     level: Level,
 }
 
-impl Log for GSLogger {
+impl Log for GsLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= self.level
     }
@@ -26,10 +26,10 @@ impl Log for GSLogger {
     fn flush(&self) {}
 }
 
-pub fn init_logger_with_level(level: Level) -> Result<(), GraphSurgeError> {
-    let logger = GSLogger { level };
+pub fn init_logger_with_level(level: Level) -> Result<(), GSError> {
+    let logger = GsLogger { level };
     log::set_boxed_logger(Box::new(logger))
-        .map_err(|e| gs_error(format!("Could not set logger: {}", e)))?;
+        .map_err(|e| GSError::Generic(format!("Could not set logger: {}", e)))?;
     log::set_max_level(level.to_level_filter());
     Ok(())
 }

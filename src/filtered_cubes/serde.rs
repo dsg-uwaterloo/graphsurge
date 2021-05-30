@@ -1,4 +1,4 @@
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use crate::filtered_cubes::timestamp::timestamp_mappings::get_timestamp_mappings;
 use crate::filtered_cubes::{DimensionLengths, FilteredCube, FilteredCubeData};
 use crate::global_store::{deserialize_object, serialize_object};
@@ -19,7 +19,7 @@ pub fn serialize(
     name: &str,
     thread_count: usize,
     block_size: Option<usize>,
-) -> Result<(), GraphSurgeError> {
+) -> Result<(), GSError> {
     let res = thread::scope(|s| {
         let data_thread = s.spawn(|r| {
             serialize_blocks(
@@ -48,10 +48,7 @@ pub fn serialize(
     res
 }
 
-pub fn deserialize(
-    bin_dir: &str,
-    thread_count: usize,
-) -> Result<(String, FilteredCube), GraphSurgeError> {
+pub fn deserialize(bin_dir: &str, thread_count: usize) -> Result<(String, FilteredCube), GSError> {
     let (dimension_lengths, name, data) = thread::scope(|s| {
         let data_thread = s.spawn(|r| {
             deserialize_blocks(

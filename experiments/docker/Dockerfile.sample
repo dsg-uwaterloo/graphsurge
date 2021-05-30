@@ -1,0 +1,4 @@
+FROM rust:1.46
+
+RUN groupadd -g [gid] graphsurge
+RUN useradd -u [uid] -g [gid] -d /opt/graphsurge graphsurge

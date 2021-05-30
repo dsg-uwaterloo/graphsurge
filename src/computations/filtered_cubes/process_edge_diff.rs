@@ -1,9 +1,8 @@
 use crate::computations::filtered_cubes::edge_diff::process_edge_diff;
 use crate::computations::filtered_cubes::execute::get_results_stash;
 use crate::computations::filtered_cubes::{DimensionOrders, FilteredMatrixStream};
-use crate::computations::TimelyTimeStamp;
-use crate::filtered_cubes::timestamp::timestamp_mappings::GSTimestampIndex;
 use crate::filtered_cubes::{DimensionLength, FilteredCubeEntriesEdgeId};
+use gs_analytics_api::{GsTimestampIndex, TimelyTimeStamp};
 use hashbrown::HashMap;
 use itertools::Itertools;
 use timely::dataflow::channels::pact::Pipeline;
@@ -16,7 +15,7 @@ pub trait EdgeDiff<S: Scope<Timestamp = TimelyTimeStamp>> {
         orders: DimensionOrders,
         dimension_lengths: Vec<DimensionLength>,
         store_total_data: bool,
-    ) -> Stream<S, Vec<(GSTimestampIndex, FilteredCubeEntriesEdgeId)>>;
+    ) -> Stream<S, Vec<(GsTimestampIndex, FilteredCubeEntriesEdgeId)>>;
 }
 
 impl<S: Scope<Timestamp = TimelyTimeStamp>> EdgeDiff<S> for Stream<S, FilteredMatrixStream> {
@@ -25,7 +24,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> EdgeDiff<S> for Stream<S, FilteredMa
         orders: DimensionOrders,
         dimension_lengths: Vec<DimensionLength>,
         store_total_data: bool,
-    ) -> Stream<S, Vec<(GSTimestampIndex, FilteredCubeEntriesEdgeId)>> {
+    ) -> Stream<S, Vec<(GsTimestampIndex, FilteredCubeEntriesEdgeId)>> {
         let mut times = HashMap::new();
         self.unary_notify(Pipeline, "ProcessEdge", None, move |input, output, notificator| {
             input.for_each(|time, input_data| {
@@ -46,7 +45,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> EdgeDiff<S> for Stream<S, FilteredMa
                             .collect_vec(),
                     );
                 }
-            })
+            });
         })
     }
 }

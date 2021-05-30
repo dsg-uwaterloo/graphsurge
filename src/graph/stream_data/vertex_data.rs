@@ -35,7 +35,9 @@ pub fn get_vertex_closure(
                     )
                 })
             }
-            _ => unreachable!("Right vertex operand should not have edge properties"),
+            RightOperand::Variable(..) => {
+                unreachable!("Right vertex operand should not have edge properties")
+            }
         },
         _ => unreachable!("Left vertex operand should not have edge properties"),
     };

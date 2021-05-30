@@ -43,10 +43,10 @@ impl KeyStore {
         if let Some(&id) = self.key_string_to_id.get(type_string) {
             id
         } else {
-            self.key_strings.push(type_string.to_string());
+            self.key_strings.push(type_string.to_owned());
             let id = KeyIdType::try_from(self.key_strings.len() - 1).expect("Ran out of key ids");
             let key_id = KeyId(id);
-            self.key_string_to_id.insert(type_string.to_string(), key_id);
+            self.key_string_to_id.insert(type_string.to_owned(), key_id);
             key_id
         }
     }

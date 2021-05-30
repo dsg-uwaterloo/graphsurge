@@ -1,7 +1,6 @@
 use crate::computations::views::{TreeVertexMapOutput, TreeVertexReduceOutput};
-use crate::computations::TimelyTimeStamp;
 use crate::util::id_generator::IdGenerator;
-use gs_analytics_api::VertexId;
+use gs_analytics_api::{TimelyTimeStamp, VertexId};
 use hashbrown::HashMap;
 use std::convert::TryFrom;
 use timely::dataflow::channels::pact::Pipeline;
@@ -61,7 +60,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> TreeReduceVertices<S>
                             }
                         }
                     }
-                })
+                });
             },
         )
     }

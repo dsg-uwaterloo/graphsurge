@@ -1,0 +1,3 @@
+deserialize cube from 'vcol_data/vcol_best_order_serde' threads 10;
+set threads 32 and process_id 7;
+run adaptive 20 computation pr(iterations=ITER) on collection vcol_best_order noresults hosts 'h0:9000' 'h1:9000' 'h2:9000' 'h3:9000' 'h4:9000' 'h5:9000' 'h6:9000' 'h7:9000';

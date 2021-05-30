@@ -1,0 +1,11 @@
+deserialize from '../graph/serde';
+set threads 32 and process_id 0;
+create view collection vcol_manual_order where
+    [ts >= 1199145600 and ts < 1325376000],
+        [ts >= 1199145600 and ts < 1356998400],
+        [ts >= 1199145600 and ts < 1388534400],
+        [ts >= 1199145600 and ts < 1420070400],
+        [ts >= 1199145600 and ts < 1451606400],
+        [ts >= 1199145600 and ts < 1483228800]
+    manually_ordered materialize_full_view;
+serialize cube vcol_manual_order to 'vcol_data/vcol_manual_order_serde' threads 10;

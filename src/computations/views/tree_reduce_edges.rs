@@ -1,6 +1,6 @@
 use crate::computations::views::tree_aggregate_vertices::merge_properties;
 use crate::computations::views::{AggregatedEdgeOutput, TreeEdgeMapOutput};
-use crate::computations::TimelyTimeStamp;
+use gs_analytics_api::TimelyTimeStamp;
 use hashbrown::HashMap;
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::generic::operator::Operator;
@@ -50,7 +50,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> TreeReduceEdges<S> for Stream<S, Tre
                         },
                     ));
                 }
-            })
+            });
         })
     }
 }

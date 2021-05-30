@@ -1,0 +1,4 @@
+load graph with
+    edges from 'graph/edges.txt'
+    has_headers false;
+serialize to 'graph/serde';

@@ -2,13 +2,11 @@ use crate::computations::views::{
     CreatedVertexId, EdgeMapOutput, EdgeMapState, FilterMapEdgesOutput, SectionIndex,
     TimelyInnerTimeStamp, VertexReverseGroupOutput,
 };
-use crate::computations::TimelyTimeStamp;
 use crate::graph::Graph;
 use crate::graph::GraphPointer;
 use differential_dataflow::hashable::Hashable;
-use gs_analytics_api::VertexId;
+use gs_analytics_api::{TimelyTimeStamp, VertexId};
 use hashbrown::HashMap;
-
 use timely::communication::Push;
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::channels::pushers::buffer::Session;

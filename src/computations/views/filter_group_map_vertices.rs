@@ -1,5 +1,4 @@
 use crate::computations::views::{SectionIndex, VertexGroupMapOutput, FIRST_SECTION_INDEX};
-use crate::computations::TimelyTimeStamp;
 use crate::graph::properties::property_value::PropertyValue;
 use crate::graph::stream_data::filter::test_where_conditions;
 use crate::graph::GraphPointer;
@@ -7,7 +6,7 @@ use crate::query_handler::create_view::{
     fmt_condition_clauses, FlattenedGroupCondition, GroupClause, GroupCondition, SectionDetails,
     VertexSections,
 };
-use gs_analytics_api::VertexId;
+use gs_analytics_api::{TimelyTimeStamp, VertexId};
 use itertools::Itertools;
 use timely::communication::Push;
 use timely::dataflow::channels::pact::Pipeline;
@@ -66,7 +65,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> FilterGroupMapVertices<S> for Stream
                                         vertex_data,
                                         &section_details,
                                         graph_pointer,
-                                    )
+                                    );
                                 });
                         });
                     }
@@ -85,7 +84,7 @@ fn group<'a, T: Eq + Clone, P: Push<Bundle<T, VertexGroupMapOutput>> + 'a>(
 ) {
     if section_details.group_clauses.is_empty() {
         let gv = vec![format!("si={}", section_index), format!("id={}", vertex_id)];
-        session.give((section_index, gv, vertex_id))
+        session.give((section_index, gv, vertex_id));
     } else {
         'group_clauses: for (group_clause_index, group_clause) in
             get_flattened_group_clauses(section_details.group_clauses.clone())
@@ -98,13 +97,9 @@ fn group<'a, T: Eq + Clone, P: Push<Bundle<T, VertexGroupMapOutput>> + 'a>(
                 match group_condition {
                     FlattenedGroupCondition::Variable(key_id) => {
                         let pv = PropertyValue::get_id(vertex_id);
-                        let value = if let Some(property_value) =
-                            graph_pointer.get_vertex_id_property_value(vertex_id, &pv, key_id)
-                        {
-                            property_value.to_string()
-                        } else {
-                            "''".to_string()
-                        };
+                        let value = graph_pointer
+                            .get_vertex_id_property_value(vertex_id, &pv, key_id)
+                            .map_or_else(|| "''".to_owned(), ToString::to_string);
                         result.push(format!("{}={}", key_id, value));
                     }
                     FlattenedGroupCondition::WhereConditions(where_conditions) => {
@@ -118,7 +113,7 @@ fn group<'a, T: Eq + Clone, P: Push<Bundle<T, VertexGroupMapOutput>> + 'a>(
             }
             // If we reach here means all the group conditions hold. Moreover, `result` indicates
             // unique group id, which we will use to get the hash.
-            session.give((section_index, result, vertex_id))
+            session.give((section_index, result, vertex_id));
         }
     }
 }
@@ -151,7 +146,7 @@ fn get_flattened_group_clauses(
                         .into_iter(),
                 })
                 .multi_cartesian_product(),
-        )
+        );
     }
     flattened_group_clauses
 }

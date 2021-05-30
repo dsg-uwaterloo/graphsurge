@@ -1,11 +1,10 @@
 use crate::computations::pagerank::PageRank;
-use crate::computations::TimelyTimeStamp;
 use differential_dataflow::collection::AsCollection;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::iterate::Variable;
 use differential_dataflow::operators::{Consolidate, Count, Join, Threshold};
 use differential_dataflow::Collection;
-use gs_analytics_api::{ComputationInput, GraphsurgeComputation};
+use gs_analytics_api::{ComputationInput, GraphsurgeComputation, TimelyTimeStamp};
 use timely::dataflow::operators::Filter;
 use timely::dataflow::Scope;
 use timely::order::Product;

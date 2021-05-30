@@ -30,18 +30,24 @@
     clippy::multiple_crate_versions,        // Disabled.
     clippy::missing_docs_in_private_items,  // Disabled.
     clippy::missing_errors_doc,             // Disabled.
+    clippy::missing_panics_doc,             // Disabled.
     clippy::missing_inline_in_public_items, // Disabled.
-    clippy::unknown_clippy_lints,           // To enable naming new lints added to nightly.
     clippy::cognitive_complexity,           // Disabled.
-    clippy::result_expect_used,             // Should use `expect` rather than `unwrap`.
-    clippy::option_expect_used,             // Should use `expect` rather than `unwrap`.
+    clippy::expect_used,                    // Should use `expect` rather than `unwrap`.
     clippy::panic,                          // Allow.
     clippy::unreachable,                    // Allow.
     clippy::todo,                           // Allow.
     clippy::must_use_candidate,             // Allow.
     clippy::inline_always,                  // Allow.
     clippy::as_conversions,                 // Allow but only when absolutely necessary.
-    clippy::implicit_hasher                 // Default hasher is fine for now.
+    clippy::implicit_hasher,                // Default hasher is fine for now.
+    clippy::blanket_clippy_restriction_lints,
+    clippy::pattern_type_mismatch,
+    clippy::unwrap_in_result,
+    clippy::map_err_ignore,
+    clippy::exhaustive_structs,
+    clippy::exhaustive_enums,
+    clippy::upper_case_acronyms,
 )]
 // Do not allow print statements. Use `log::info!()` or equivalent instead.
 #![deny(clippy::print_stdout)]
@@ -60,7 +66,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate derive_new;
 
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use crate::global_store::GlobalStore;
 use crate::parser::GraphSurgeParser;
 use crate::query_handler::GraphSurgeResult;
@@ -69,7 +75,7 @@ use crate::query_handler::GraphSurgeResult;
 pub fn process_query(
     global_store: &mut GlobalStore,
     query_string: &mut String,
-) -> Result<String, GraphSurgeError> {
+) -> Result<String, GSError> {
     // Parse the query string.
     let parser = GraphSurgeParser::new(&global_store.key_store);
     let query = parser.parse_query(&query_string)?;

@@ -1,10 +1,10 @@
 use crate::computations::builder::{initialize_computations, ComputationBuilder};
-use crate::error::{serde_error, GraphSurgeError};
+use crate::error::GSError;
 use crate::filtered_cubes::FilteredCubeStore;
 use crate::graph::key_store::KeyStore;
 use crate::graph::Graph;
-use crate::util::io::{get_buf_reader, GSWriter};
-use crate::util::timer::GSTimer;
+use crate::util::io::{get_buf_reader, GsWriter};
+use crate::util::timer::GsTimer;
 use crate::GraphSurgeResult;
 use hashbrown::HashMap;
 use log::info;
@@ -56,23 +56,23 @@ impl GlobalStore {
         bin_dir: &str,
         thread_count: usize,
         block_size: Option<usize>,
-    ) -> Result<GraphSurgeResult, GraphSurgeError> {
+    ) -> Result<GraphSurgeResult, GSError> {
         if !Path::new(bin_dir).is_dir() {
-            return Err(serde_error(format!("Invalid binary directory: '{}'", bin_dir)));
+            return Err(GSError::NotDirectory(bin_dir.to_owned()));
         }
         self.graph.serialize(bin_dir, thread_count, block_size)?;
         serialize_object(bin_dir, SERDE_FILE_KEY_STORE, &self.key_store)?;
         serialize_object(bin_dir, SERDE_FILE_FILTERED_CUBES, &self.filtered_cube_store)?;
-        Ok(GraphSurgeResult::new("Serialization done.".to_string()))
+        Ok(GraphSurgeResult::new("Serialization done.".to_owned()))
     }
 
     pub fn deserialize(
         &mut self,
         bin_dir: &str,
         thread_count: usize,
-    ) -> Result<GraphSurgeResult, GraphSurgeError> {
+    ) -> Result<GraphSurgeResult, GSError> {
         if !Path::new(bin_dir).is_dir() {
-            return Err(serde_error(format!("Invalid binary directory: '{}'", bin_dir)));
+            return Err(GSError::NotDirectory(bin_dir.to_owned()));
         }
         self.reset();
         let ret = self.deserialize_inner(bin_dir, thread_count);
@@ -86,11 +86,11 @@ impl GlobalStore {
         &mut self,
         bin_dir: &str,
         thread_count: usize,
-    ) -> Result<GraphSurgeResult, GraphSurgeError> {
+    ) -> Result<GraphSurgeResult, GSError> {
         self.graph.deserialize(bin_dir, thread_count)?;
         self.key_store = deserialize_object(bin_dir, SERDE_FILE_KEY_STORE)?;
         self.filtered_cube_store = deserialize_object(bin_dir, SERDE_FILE_FILTERED_CUBES)?;
-        Ok(GraphSurgeResult::new("Deserialization done.".to_string()))
+        Ok(GraphSurgeResult::new("Deserialization done.".to_owned()))
     }
 }
 
@@ -98,27 +98,24 @@ pub fn serialize_object<T: Serialize>(
     bin_dir: &str,
     name: &str,
     object: &T,
-) -> Result<(), GraphSurgeError> {
+) -> Result<(), GSError> {
     let output_file_path = get_file_path(bin_dir, name);
     info!("Serializing to '{}'", output_file_path);
-    let timer = GSTimer::now();
-    let writer = GSWriter::new(output_file_path)?;
+    let timer = GsTimer::now();
+    let writer = GsWriter::new(output_file_path)?;
     bincode::serialize_into(writer.into_buf_writer(), object)
-        .map_err(|e| serde_error(format!("Could not serialize '{}': {}", name, e)))?;
+        .map_err(|e| GSError::Serialize(name.to_owned(), e.to_string()))?;
     info!("Serialized '{}' in {}", name, timer.elapsed().to_seconds_string());
     Ok(())
 }
 
-pub fn deserialize_object<T: DeserializeOwned>(
-    bin_dir: &str,
-    name: &str,
-) -> Result<T, GraphSurgeError> {
+pub fn deserialize_object<T: DeserializeOwned>(bin_dir: &str, name: &str) -> Result<T, GSError> {
     let input_file_path = get_file_path(bin_dir, name);
     info!("Deserializing '{}'", input_file_path);
-    let timer = GSTimer::now();
+    let timer = GsTimer::now();
     let reader = get_buf_reader(&input_file_path)?;
     let object = bincode::deserialize_from(reader)
-        .map_err(|e| serde_error(format!("Could not deserialize '{}': {}", name, e)))?;
+        .map_err(|e| GSError::Deserialize(name.to_owned(), e.to_string()))?;
     info!("Deserialized '{}' in {}", name, timer.elapsed().to_seconds_string());
     Ok(object)
 }

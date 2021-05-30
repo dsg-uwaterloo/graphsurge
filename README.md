@@ -134,5 +134,4 @@ for a set of common graph algorithms. New computations can be written using the 
 Computation API](gs_analytics_api/src). You can see examples of how to use the API for
 [bfs](src/computations/bfs) and [scc](src/computations/scc).
 
-Documentation for more queries supported in Graphsurge will be up later. Meanwhile, if you can't
-wait, browse through the [query grammar](src/parser).
+Check the [experiments](experiments/) folder for examples on how to use Graphsurge.

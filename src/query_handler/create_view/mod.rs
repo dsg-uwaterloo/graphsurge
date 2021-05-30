@@ -4,7 +4,6 @@ use crate::graph::stream_data::aggregation::AggregationOperation;
 use crate::graph::GraphPointer;
 use crate::graph::VertexOrEdgeId;
 use hashbrown::HashMap;
-use serde::export::fmt::Debug;
 use std::num::NonZeroU8;
 use std::sync::Arc;
 
@@ -35,7 +34,7 @@ pub type WherePredicate = ((LeftOperand, Operator, RightOperand), PredicateFunct
 #[derive(Clone, new)]
 pub struct PredicateFunction(pub PredicateFunctionClosure);
 pub type PredicateFunctionClosure = Arc<dyn Fn(VertexOrEdgeId, GraphPointer) -> bool + Send + Sync>;
-impl Debug for PredicateFunction {
+impl std::fmt::Debug for PredicateFunction {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(f, "[closure]",)
     }
@@ -106,7 +105,7 @@ fn fmt_label(section_id: SectionId, label_map: &LabelMap) -> String {
     if let Some(label) = label_map.get(&section_id) {
         format!("as {}", label)
     } else {
-        "".to_string()
+        String::new()
     }
 }
 

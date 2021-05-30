@@ -1,4 +1,4 @@
-use crate::computations::wcc::WCC;
+use crate::computations::wcc::Wcc;
 use differential_dataflow::collection::AsCollection;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::arrange::ArrangeByKey;
@@ -12,7 +12,7 @@ use timely::dataflow::operators::{Concat, Delay, Map};
 use timely::dataflow::Scope;
 use timely::order::Product;
 
-impl GraphsurgeComputation for WCC {
+impl GraphsurgeComputation for Wcc {
     /// Code adapted from [Differential Dataflow](https://github.com/TimelyDataflow/differential-dataflow/blob/master/experiments/src/bin/graphs-static.rs).
     fn graph_analytics<G: Scope>(
         &self,
@@ -39,7 +39,7 @@ impl GraphsurgeComputation for WCC {
             let result = nodes
                 .inner
                 .map_in_place(move |dtr| {
-                    (dtr.1).inner = 256 * (vertex_id_bits - (dtr.0).1.leading_zeros())
+                    (dtr.1).inner = 256 * (vertex_id_bits - (dtr.0).1.leading_zeros());
                 })
                 .concat(&inner.filter(|_| false).inner)
                 .delay(|dtr, _| dtr.1)

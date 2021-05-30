@@ -1,23 +1,20 @@
 use crate::computations::filtered_cubes::execute::execute;
-use crate::error::create_cube_error;
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use crate::filtered_cubes::timestamp::timestamp_mappings::get_timestamp_mappings;
 use crate::filtered_cubes::timestamp::GSTimestamp;
-use crate::filtered_cubes::{DimensionLength, DimensionLengths, FilteredCube, FilteredCubeData};
+use crate::filtered_cubes::{DimensionLength, DimensionLengths, FilteredCube};
 use crate::global_store::GlobalStore;
 use crate::query_handler::create_filtered_cube::CreateViewCollectionAst;
 use crate::query_handler::GraphSurgeQuery;
 use crate::query_handler::GraphSurgeResult;
+use gs_analytics_api::FilteredCubeData;
 use log::info;
 use std::convert::TryFrom;
 
 impl GraphSurgeQuery for CreateViewCollectionAst {
-    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GraphSurgeError> {
+    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GSError> {
         if global_store.filtered_cube_store.cubes.contains_key(&self.name) {
-            return Err(create_cube_error(format!(
-                "Cube name '{}' already exists in store",
-                self.name
-            )));
+            return Err(GSError::CollectionAlreadyExists(self.name.clone()));
         }
 
         let dimension_lengths: DimensionLengths = self
@@ -100,7 +97,7 @@ mod tests {
             load graph with vertices from 'data/small_mutiple_types/vertices.txt'
             and edges from 'data/small_mutiple_types/edges.txt'
             comment '#';"
-            .to_string();
+            .to_owned();
         process_query(&mut global_store, &mut graph_query).expect("Graph not loaded");
 
         let mut cube_query = "
@@ -108,7 +105,7 @@ mod tests {
             where [u.type = 'v1'],[u.type = 'v2'],[type = 'e1']
             manually_ordered
             materialize_full_view;"
-            .to_string();
+            .to_owned();
         process_query(&mut global_store, &mut cube_query).expect("Cube not created");
 
         let created_cube =

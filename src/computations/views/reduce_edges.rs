@@ -1,5 +1,5 @@
 use crate::computations::views::{EdgeMapOutput, EdgeReduceOutput};
-use crate::computations::TimelyTimeStamp;
+use gs_analytics_api::TimelyTimeStamp;
 use hashbrown::HashMap;
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::generic::operator::Operator;
@@ -36,7 +36,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> ReduceEdges<S> for Stream<S, EdgeMap
                         collection.into_iter().map(|(em, map)| (em, map.into_iter().collect())),
                     );
                 }
-            })
+            });
         })
     }
 }

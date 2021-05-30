@@ -1,9 +1,8 @@
 use crate::computations::filtered_cubes::{FilteredMatrixRow, FilteredMatrixStream};
-use crate::computations::TimelyTimeStamp;
 use crate::graph::stream_data::filter::test_where_conditions;
 use crate::graph::GraphPointer;
 use crate::query_handler::create_filtered_cube::Dimension;
-use gs_analytics_api::EdgeId;
+use gs_analytics_api::{EdgeId, TimelyTimeStamp};
 use itertools::Itertools;
 use std::iter;
 use timely::dataflow::channels::pact::Pipeline;

@@ -1,0 +1,8 @@
+load graph with
+    edges
+        type e:(n,n) from 'data/edges.txt'
+    separator ' '
+    comment '#';
+show schema;
+serialize to 'gs-bin';
+save graph to 'data/gsgraph';

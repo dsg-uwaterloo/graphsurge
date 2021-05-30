@@ -1,11 +1,10 @@
 use crate::computations::pagerank::PageRank;
-use crate::computations::TimelyTimeStamp;
 use differential_dataflow::collection::AsCollection;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::iterate::Variable;
 use differential_dataflow::operators::{Consolidate, Count, Join, Threshold};
 use differential_dataflow::Collection;
-use gs_analytics_api::{BasicComputation, DiffCount, SimpleEdge, VertexId};
+use gs_analytics_api::{BasicComputation, DiffCount, SimpleEdge, TimelyTimeStamp, VertexId};
 use timely::dataflow::operators::Filter;
 use timely::dataflow::Scope;
 use timely::order::Product;
@@ -41,7 +40,7 @@ where
     #[allow(clippy::suspicious_map)]
     let degrs = edges.map(|(src, _dst)| src).count();
 
-    edges.scope().iterative::<usize, _, _>(|inner| {
+    edges.scope().iterative::<TimelyTimeStamp, _, _>(|inner| {
         // Bring various collections into the scope.
         let edges = edges.enter(inner);
         let nodes = nodes.enter(inner);

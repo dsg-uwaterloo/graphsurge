@@ -14,13 +14,14 @@ pub enum Operator {
 impl Operator {
     pub fn as_string(self) -> String {
         match self {
-            Operator::Less => "<".to_string(),
-            Operator::LessEqual => "<=".to_string(),
-            Operator::Greater => ">".to_string(),
-            Operator::GreaterEqual => ">=".to_string(),
-            Operator::Equal => "=".to_string(),
-            Operator::NotEqual => "<>".to_string(),
+            Operator::Less => "<",
+            Operator::LessEqual => "<=",
+            Operator::Greater => ">",
+            Operator::GreaterEqual => ">=",
+            Operator::Equal => "=",
+            Operator::NotEqual => "<>",
         }
+        .to_owned()
     }
 }
 
@@ -39,7 +40,7 @@ impl std::fmt::Display for Operand {
             f,
             "{}",
             match self {
-                Operand::Edge => "e".to_string(),
+                Operand::Edge => "e".to_owned(),
                 Operand::Property(k) => k.to_string(),
                 Operand::SourceVertex(k) => format!("u.{}", k),
                 Operand::DestinationVertex(k) => format!("v.{}", k),

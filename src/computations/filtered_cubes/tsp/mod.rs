@@ -14,7 +14,6 @@ use itertools::Itertools;
 use log::info;
 use rand::seq::IteratorRandom;
 use std::convert::TryFrom;
-use std::iter::FromIterator;
 
 type EdgeWeight = usize;
 type MST = HashMap<VertexId, Vec<(VertexId, EdgeWeight)>>;
@@ -29,7 +28,7 @@ pub fn tsp(matrix: &[MatrixRow]) -> DimensionOrder {
         let u = combination[0];
         let v = combination[1];
         let w = combination[2];
-        assert!(matrix[u][v] + matrix[v][w] >= matrix[w][u], "Triangle equality not satisfied")
+        assert!(matrix[u][v] + matrix[v][w] >= matrix[w][u], "Triangle equality not satisfied");
     }
     info!("Generating MST...");
     let mut mst = minimum_spanning_tree(matrix);
@@ -43,7 +42,7 @@ pub fn tsp(matrix: &[MatrixRow]) -> DimensionOrder {
     info!("Finding Hamiltonian Circuit...");
     let hamiltonian_circuit = create_hamiltonian_circuit(eulerian_tour);
     assert_eq!(
-        HashSet::<DimensionId>::from_iter(hamiltonian_circuit.iter().copied()).len(),
+        hamiltonian_circuit.iter().copied().collect::<HashSet<_>>().len(),
         vertex_count,
         "Expected that all vertices will appear in the hamiltonian circuit"
     );

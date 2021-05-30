@@ -1,0 +1,3 @@
+deserialize cube from 'vcol_data/vcol_best_order_serde' threads 10;
+set threads 32 and process_id 0;
+run 2_stage_differential computation pr(iterations=ITER) on collection vcol_best_order noresults;

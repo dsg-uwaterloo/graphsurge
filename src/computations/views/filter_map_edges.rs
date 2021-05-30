@@ -1,9 +1,8 @@
 use crate::computations::views::{FilterMapEdgesOutput, FIRST_SECTION_INDEX, NULL_SECTION_INDEX};
-use crate::computations::TimelyTimeStamp;
 use crate::graph::stream_data::filter::test_where_conditions;
 use crate::graph::GraphPointer;
 use crate::query_handler::create_view::EdgeSections;
-use gs_analytics_api::EdgeId;
+use gs_analytics_api::{EdgeId, TimelyTimeStamp};
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::generic::operator::Operator;
 use timely::dataflow::{Scope, Stream};

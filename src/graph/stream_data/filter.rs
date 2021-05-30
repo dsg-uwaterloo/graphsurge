@@ -36,7 +36,9 @@ mod tests {
     use crate::graph::stream_data::filter::test_edge_where_predicate;
     use crate::graph::GraphPointer;
     use crate::process_query;
+    use gs_analytics_api::EdgeId;
     use itertools::Itertools;
+    use std::convert::TryFrom;
 
     #[test]
     fn test_edge_filter() {
@@ -44,7 +46,7 @@ mod tests {
 
         let mut graph_query = "load graph with vertices from 'data/small_properties/vertices.txt'
          and edges from 'data/small_properties/edges.txt' comment '#';"
-            .to_string();
+            .to_owned();
         process_query(&mut global_store, &mut graph_query).expect("Graph not loaded");
 
         let graph = &global_store.graph;
@@ -54,8 +56,8 @@ mod tests {
         let amount_key_id = key_store.get_key_id("amount").expect("property key missing");
         let year_key_id = key_store.get_key_id("year").expect("property key missing");
         let id_key_id = key_store.get_key_id("id").expect("property key missing");
-        let include_key_id = key_store.get_key_id("include").expect("property key missing");
-        let include2_key_id = key_store.get_key_id("include2").expect("property key missing");
+        let include_key_id_1 = key_store.get_key_id("include").expect("property key missing");
+        let include_key_id_2 = key_store.get_key_id("include2").expect("property key missing");
         let city_key_id = key_store.get_key_id("city").expect("property key missing");
         let gender_key_id = key_store.get_key_id("gender").expect("property key missing");
 
@@ -87,9 +89,9 @@ mod tests {
                 vec![0, 1, 2, 3, 4, 5, 6],
             ),
             (
-                Operand::Property(include_key_id),
+                Operand::Property(include_key_id_1),
                 Operator::Equal,
-                RightOperand::Variable(Operand::DestinationVertex(include_key_id)),
+                RightOperand::Variable(Operand::DestinationVertex(include_key_id_1)),
                 vec![3, 6],
             ),
             (
@@ -114,19 +116,19 @@ mod tests {
             (
                 Operand::SourceVertex(city_key_id),
                 Operator::Equal,
-                RightOperand::Value(PropertyValue::String("waterloo".to_string())),
+                RightOperand::Value(PropertyValue::String("waterloo".to_owned())),
                 vec![1, 2],
             ),
             (
-                Operand::SourceVertex(include_key_id),
+                Operand::SourceVertex(include_key_id_1),
                 Operator::NotEqual,
-                RightOperand::Variable(Operand::Property(include_key_id)),
+                RightOperand::Variable(Operand::Property(include_key_id_1)),
                 vec![2, 3, 5],
             ),
             (
-                Operand::SourceVertex(include_key_id),
+                Operand::SourceVertex(include_key_id_1),
                 Operator::NotEqual,
-                RightOperand::Variable(Operand::SourceVertex(include2_key_id)),
+                RightOperand::Variable(Operand::SourceVertex(include_key_id_2)),
                 vec![0, 5],
             ),
             (
@@ -136,9 +138,9 @@ mod tests {
                 vec![1, 4, 5],
             ),
             (
-                Operand::DestinationVertex(include2_key_id),
+                Operand::DestinationVertex(include_key_id_2),
                 Operator::NotEqual,
-                RightOperand::Variable(Operand::Property(include_key_id)),
+                RightOperand::Variable(Operand::Property(include_key_id_1)),
                 vec![0, 1, 3, 6],
             ),
             (
@@ -148,9 +150,9 @@ mod tests {
                 vec![0, 2, 3, 6],
             ),
             (
-                Operand::DestinationVertex(include_key_id),
+                Operand::DestinationVertex(include_key_id_1),
                 Operator::Equal,
-                RightOperand::Variable(Operand::DestinationVertex(include2_key_id)),
+                RightOperand::Variable(Operand::DestinationVertex(include_key_id_2)),
                 vec![0, 1],
             ),
         ]
@@ -159,7 +161,13 @@ mod tests {
         {
             let closure = get_edge_closure(left_operand, operator, right_operand);
             let filtered_edge_ids = (0..graph.edges_count())
-                .filter(|edge_id| test_edge_where_predicate(&closure, *edge_id, graph_pointer))
+                .filter(|edge_id| {
+                    test_edge_where_predicate(
+                        &closure,
+                        EdgeId::try_from(*edge_id).expect("Bounds overflow"),
+                        graph_pointer,
+                    )
+                })
                 .collect_vec();
             assert_eq!(
                 filtered_edge_ids, expected_edge_ids,

@@ -1,10 +1,10 @@
-use crate::computations::spsp::{bidijkstra_arranged, SPSP};
+use crate::computations::spsp::{bidijkstra_arranged, Spsp};
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::Collection;
 use gs_analytics_api::{ComputationInput, GraphsurgeComputation, PropertyInput};
 use timely::dataflow::Scope;
 
-impl GraphsurgeComputation for SPSP {
+impl GraphsurgeComputation for Spsp {
     fn graph_analytics<G: Scope>(
         &self,
         input_stream: &ComputationInput<G>,

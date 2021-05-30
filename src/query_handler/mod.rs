@@ -1,4 +1,4 @@
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use crate::global_store::GlobalStore;
 
 pub mod create_aggregated_cube;
@@ -19,7 +19,7 @@ pub mod write_cube;
 pub mod write_graph;
 
 pub trait GraphSurgeQuery: std::fmt::Display {
-    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GraphSurgeError>;
+    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GSError>;
 }
 
 #[derive(new)]

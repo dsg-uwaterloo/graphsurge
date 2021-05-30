@@ -1,6 +1,6 @@
 use crate::computations::views::{AggregatedVertexOutput, GroupsLength, TreeVertexMapOutput};
-use crate::computations::TimelyTimeStamp;
 use differential_dataflow::hashable::Hashable;
+use gs_analytics_api::TimelyTimeStamp;
 use itertools::Itertools;
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::exchange::Exchange;

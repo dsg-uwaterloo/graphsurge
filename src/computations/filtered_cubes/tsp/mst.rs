@@ -21,7 +21,7 @@ pub fn minimum_spanning_tree(matrix: &[MatrixRow]) -> MST {
             tree.entry(VertexId::try_from(v).expect("Overflow"))
                 .or_insert_with(Vec::new)
                 .push((VertexId::try_from(u).expect("Overflow"), w));
-            subtrees.union(u, v)
+            subtrees.union(u, v);
         }
     }
     tree

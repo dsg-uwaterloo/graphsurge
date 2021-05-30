@@ -1,0 +1,35 @@
+deserialize from '../graph/serde';
+set threads 32 and process_id 0;
+create view collection vcol_best_order where
+    [ts >= 1199145600 and ts < 1372636800],
+        [ts >= 1199145600 and ts < 1372723200],
+        [ts >= 1199145600 and ts < 1372809600],
+        [ts >= 1199145600 and ts < 1372896000],
+        [ts >= 1199145600 and ts < 1372982400],
+        [ts >= 1199145600 and ts < 1373068800],
+        [ts >= 1199145600 and ts < 1373155200],
+        [ts >= 1199145600 and ts < 1373241600],
+        [ts >= 1199145600 and ts < 1373328000],
+        [ts >= 1199145600 and ts < 1373414400],
+        [ts >= 1199145600 and ts < 1373500800],
+        [ts >= 1199145600 and ts < 1373587200],
+        [ts >= 1199145600 and ts < 1373673600],
+        [ts >= 1199145600 and ts < 1373760000],
+        [ts >= 1199145600 and ts < 1373846400],
+        [ts >= 1199145600 and ts < 1373932800],
+        [ts >= 1199145600 and ts < 1374019200],
+        [ts >= 1199145600 and ts < 1374105600],
+        [ts >= 1199145600 and ts < 1374192000],
+        [ts >= 1199145600 and ts < 1374278400],
+        [ts >= 1199145600 and ts < 1374364800],
+        [ts >= 1199145600 and ts < 1374451200],
+        [ts >= 1199145600 and ts < 1374537600],
+        [ts >= 1199145600 and ts < 1374624000],
+        [ts >= 1199145600 and ts < 1374710400],
+        [ts >= 1199145600 and ts < 1374796800],
+        [ts >= 1199145600 and ts < 1374883200],
+        [ts >= 1199145600 and ts < 1374969600],
+        [ts >= 1199145600 and ts < 1375056000],
+        [ts >= 1199145600 and ts < 1375142400]
+     materialize_full_view;
+serialize cube vcol_best_order to 'vcol_data/vcol_best_order_serde' threads 10;

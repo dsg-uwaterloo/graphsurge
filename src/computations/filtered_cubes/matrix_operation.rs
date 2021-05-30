@@ -1,6 +1,6 @@
 use crate::computations::filtered_cubes::{FilteredMatrixStream, Matrices};
-use crate::computations::TimelyTimeStamp;
 use crate::filtered_cubes::DimensionLengths;
+use gs_analytics_api::TimelyTimeStamp;
 use hashbrown::HashMap;
 use itertools::Itertools;
 use log::info;
@@ -39,8 +39,10 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> MatrixOperation<S> for Stream<S, Fil
                         })
                         .collect_vec()
                 });
-                for (_, filter_matrices) in input_data.iter() {
-                    for (dimension_index, filter_matrix_row) in filter_matrices.iter().enumerate() {
+                for (_, filter_matrix_all_dimensions) in input_data.iter() {
+                    for (dimension_index, filter_matrix_row) in
+                        filter_matrix_all_dimensions.iter().enumerate()
+                    {
                         let sum: usize =
                             filter_matrix_row.iter().map(|&value| usize::from(value)).sum();
                         if sum == 0 || sum == filter_matrix_row.len() {
@@ -71,7 +73,58 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> MatrixOperation<S> for Stream<S, Fil
                     }
                     output.session(&time).give(matrices);
                 }
-            })
+            });
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MatrixOperation;
+    use timely::dataflow::operators::capture::Extract;
+    use timely::dataflow::operators::Capture;
+    use timely::dataflow::InputHandle;
+    use timely::Configuration;
+
+    #[test]
+    fn test_matrix() {
+        timely::execute(Configuration::Process(1), move |worker| {
+            let mut filter_matrix_input = InputHandle::new();
+            let result = worker.dataflow(|scope| {
+                filter_matrix_input.to_stream(scope).create_ordering_matrices(vec![5], 0).capture()
+            });
+            let mut data = vec![];
+            for i in 0..10 {
+                data.push((i, vec![vec![0, 1, 0, 0, 0]]));
+            }
+            for i in 10..50 {
+                data.push((i, vec![vec![0, 1, 1, 1, 0]]));
+            }
+            for i in 50..60 {
+                data.push((i, vec![vec![0, 1, 1, 1, 1]]));
+            }
+            for i in 60..100 {
+                data.push((i, vec![vec![0, 0, 1, 0, 1]]));
+            }
+            for i in 100..200 {
+                data.push((i, vec![vec![0, 0, 1, 0, 1]]));
+            }
+            for d in data {
+                filter_matrix_input.send(d);
+            }
+            filter_matrix_input.close();
+            while worker.step() {}
+            assert_eq!(
+                result.extract()[0].1,
+                vec![vec![vec![
+                    vec![0, 60, 190, 50, 150],
+                    vec![60, 0, 150, 10, 190],
+                    vec![190, 150, 0, 140, 40],
+                    vec![50, 10, 140, 0, 180],
+                    vec![150, 190, 40, 180, 0]
+                ]]]
+            );
+        })
+        .expect("Timely error");
     }
 }

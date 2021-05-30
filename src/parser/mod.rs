@@ -3,8 +3,7 @@
 #![allow(clippy::unused_self)]
 
 use crate::computations::ComputationProperties;
-use crate::computations::ComputationType;
-use crate::error::{parsing_error, GraphSurgeError};
+use crate::error::GSError;
 use crate::graph::key_store::KeyId;
 use crate::graph::key_store::KeyStore;
 use crate::graph::properties::operations::{Operand, Operator, RightOperand};
@@ -25,7 +24,7 @@ use crate::query_handler::generate_cube::GenerateCubeAst;
 use crate::query_handler::load_cube::LoadCubeAst;
 use crate::query_handler::load_graph::executor::DEFAULT_HAS_HEADERS;
 use crate::query_handler::load_graph::LoadGraphAst;
-use crate::query_handler::run_computation::{MaterializeResults, RunComputationAst};
+use crate::query_handler::run_computation::RunComputationAst;
 use crate::query_handler::serde::{Operation, Serde};
 use crate::query_handler::set_threads::SetThreads;
 use crate::query_handler::show_computations::ShowComputationsAst;
@@ -35,6 +34,7 @@ use crate::query_handler::window_cube::WindowCubeAst;
 use crate::query_handler::write_cube::WriteCubeAst;
 use crate::query_handler::write_graph::WriteGraphAst;
 use crate::query_handler::GraphSurgeQuery;
+use gs_analytics_api::{ComputationType, MaterializeResults};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use pest::iterators::Pair;
@@ -56,12 +56,9 @@ impl<'a> GraphSurgeParser<'a> {
         Self { key_store }
     }
 
-    pub fn parse_query(
-        &self,
-        query_str: &str,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    pub fn parse_query(&self, query_str: &str) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut root = GraphSurgeParser::parse(Rule::graphsurge_query, query_str)
-            .map_err(|e| parsing_error(format!("\n{}", e)))?;
+            .map_err(|e| GSError::Parsing(format!("\n{}", e)))?;
 
         let graphsurge_query_rule = get_next_rule(&mut root, "graphsurge_query")?;
         let queries_rule = inner_and_get_next_rule(graphsurge_query_rule)?;
@@ -95,10 +92,7 @@ impl<'a> GraphSurgeParser<'a> {
         }
     }
 
-    fn parse_load_graph(
-        &self,
-        rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    fn parse_load_graph(&self, rule: Pair<Rule>) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let mut vertex_file = None;
@@ -177,10 +171,7 @@ impl<'a> GraphSurgeParser<'a> {
         )))
     }
 
-    fn parse_load_collection(
-        &self,
-        rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    fn parse_load_collection(&self, rule: Pair<Rule>) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let name = self.parse_variable(rules.next(), "load_cube::variable")?;
@@ -248,7 +239,7 @@ impl<'a> GraphSurgeParser<'a> {
     fn parse_window_collection(
         &self,
         rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    ) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let name = self.parse_variable(rules.next(), "generate_cube::variable")?;
@@ -273,7 +264,7 @@ impl<'a> GraphSurgeParser<'a> {
     fn parse_generate_collection(
         &self,
         rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    ) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let name = self.parse_variable(rules.next(), "generate_cube::variable")?;
@@ -293,10 +284,7 @@ impl<'a> GraphSurgeParser<'a> {
         )))
     }
 
-    fn parse_write_graph(
-        &self,
-        rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    fn parse_write_graph(&self, rule: Pair<Rule>) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let filename = self.parse_string(rules.next(), "write_graph::non_empty_string")?;
@@ -307,7 +295,7 @@ impl<'a> GraphSurgeParser<'a> {
     fn parse_write_collection(
         &self,
         rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    ) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let name = self.parse_variable(rules.next(), "write_cube::variable")?;
@@ -319,10 +307,7 @@ impl<'a> GraphSurgeParser<'a> {
         Ok(Box::new(WriteCubeAst::new(name, filename, threads, gb)))
     }
 
-    fn parse_show_queries(
-        &self,
-        rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    fn parse_show_queries(&self, rule: Pair<Rule>) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let rule = inner_and_get_next_rule(rule)?;
 
         match rule.as_rule() {
@@ -341,7 +326,7 @@ impl<'a> GraphSurgeParser<'a> {
         &self,
         rule: Pair<Rule>,
         operation: Operation,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    ) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let bin_dir = self.parse_string(rules.next(), "serialize::non_empty_string")?;
@@ -378,7 +363,7 @@ impl<'a> GraphSurgeParser<'a> {
     fn parse_serialize_collection(
         &self,
         rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    ) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let name = self.parse_variable(rules.next(), "serialize_collection::variable")?;
@@ -420,7 +405,7 @@ impl<'a> GraphSurgeParser<'a> {
     fn parse_create_view_or_collection(
         &self,
         rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    ) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let rule = get_next_rule(&mut rules, "create_view_or_collection")?;
@@ -434,44 +419,44 @@ impl<'a> GraphSurgeParser<'a> {
     fn parse_create_aggregated_cube(
         &self,
         rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    ) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let sections_rule = get_next_rule(&mut rules, "create_aggregated_cube::sections")?;
         let ast = self.parse_sections(sections_rule)?;
 
         if ast.vertex_sections.len() != 1 {
-            return Err(parsing_error(
-                "Aggregated cube should have *one* 'vertices' section".to_string(),
+            return Err(GSError::Parsing(
+                "Aggregated cube should have *one* 'vertices' section".to_owned(),
             ));
         }
         let vertex_section_details =
             ast.vertex_sections.values().next().expect("Should be present");
         if vertex_section_details.group_clauses.len() != 1 {
-            return Err(parsing_error(
-                "Aggregated cube vertex should have *one* 'group by' clause".to_string(),
+            return Err(GSError::Parsing(
+                "Aggregated cube vertex should have *one* 'group by' clause".to_owned(),
             ));
         }
         let group_length =
-            vertex_section_details.group_clauses.iter().next().expect("Should be there").len();
+            vertex_section_details.group_clauses.get(0).expect("Should be there").len();
         if group_length == 0 {
-            return Err(parsing_error("Number of group conditions should not be 0".to_string()));
+            return Err(GSError::Parsing("Number of group conditions should not be 0".to_owned()));
         }
 
         if ast.edge_sections.is_empty() {
-            return Err(parsing_error(
-                "Aggregated cube should have at least one 'edges' section".to_string(),
+            return Err(GSError::Parsing(
+                "Aggregated cube should have at least one 'edges' section".to_owned(),
             ));
         }
         for (between_clause, edge_section_details) in ast.edge_sections.values() {
             if between_clause.is_some() {
-                return Err(parsing_error(
-                    "Aggregated cube edges should not have 'between' clauses".to_string(),
+                return Err(GSError::Parsing(
+                    "Aggregated cube edges should not have 'between' clauses".to_owned(),
                 ));
             }
             if !edge_section_details.group_clauses.is_empty() {
-                return Err(parsing_error(
-                    "Aggregated cube edges should not have 'group by' clauses".to_string(),
+                return Err(GSError::Parsing(
+                    "Aggregated cube edges should not have 'group by' clauses".to_owned(),
                 ));
             }
         }
@@ -482,7 +467,7 @@ impl<'a> GraphSurgeParser<'a> {
         )))
     }
 
-    fn parse_sections(&self, rule: Pair<Rule>) -> Result<CreateViewAst, GraphSurgeError> {
+    fn parse_sections(&self, rule: Pair<Rule>) -> Result<CreateViewAst, GSError> {
         let mut rules = rule.into_inner();
         let mut is_empty = true;
 
@@ -501,10 +486,10 @@ impl<'a> GraphSurgeParser<'a> {
             // Parse (optional) vertex label.
             let next_rule = get_next_rule(&mut rules, "vertices_section::variable?")?;
             let next_rule = if next_rule.as_rule() == Rule::variable {
-                let label = next_rule.as_str().to_string();
+                let label = next_rule.as_str().to_owned();
                 if vertex_labels.contains_key(&label) {
                     // Duplicate label check
-                    return Err(parsing_error(format!(
+                    return Err(GSError::Parsing(format!(
                         "Duplicate vertex label '{}' in create view",
                         label
                     )));
@@ -520,7 +505,7 @@ impl<'a> GraphSurgeParser<'a> {
             if self.is_non_empty_view(&vertex_details) {
                 is_empty = false;
             } else {
-                return Err(parsing_error(format!(
+                return Err(GSError::Parsing(format!(
                     "At least one vertex view definition should be present in section {}",
                     vertex_section_index
                 )));
@@ -542,10 +527,10 @@ impl<'a> GraphSurgeParser<'a> {
             // Parse (optional) edge label.
             let next_rule = get_next_rule(&mut rules, "edge_sections::variable?")?;
             let next_rule = if next_rule.as_rule() == Rule::variable {
-                let label = next_rule.as_str().to_string();
+                let label = next_rule.as_str().to_owned();
                 if edge_labels.contains_key(&label) {
                     // Duplicate label check
-                    return Err(parsing_error(format!(
+                    return Err(GSError::Parsing(format!(
                         "Duplicate edge label '{}' in create view",
                         label
                     )));
@@ -565,7 +550,7 @@ impl<'a> GraphSurgeParser<'a> {
                     self.parse_variable(inner_rules.next(), "between_vertices::variable[1]")?;
                 let from_vertices_id =
                     *vertex_labels.get(&from_vertices_label).ok_or_else(|| {
-                        parsing_error(format!(
+                        GSError::Parsing(format!(
                             "Vertex section label '{}' used but not defined",
                             from_vertices_label
                         ))
@@ -573,7 +558,7 @@ impl<'a> GraphSurgeParser<'a> {
                 let to_vertices_label =
                     self.parse_variable(inner_rules.next(), "between_vertices::variable[2]")?;
                 let to_vertices_id = *vertex_labels.get(&to_vertices_label).ok_or_else(|| {
-                    parsing_error(format!(
+                    GSError::Parsing(format!(
                         "Vertex section label '{}' used but not defined",
                         to_vertices_label
                     ))
@@ -589,7 +574,7 @@ impl<'a> GraphSurgeParser<'a> {
             if self.is_non_empty_view(&edge_details) {
                 is_empty = false;
             } else {
-                return Err(parsing_error(format!(
+                return Err(GSError::Parsing(format!(
                     "At least one edge view definition should be present in section {}",
                     edge_section_index
                 )));
@@ -605,8 +590,8 @@ impl<'a> GraphSurgeParser<'a> {
         };
 
         if is_empty {
-            Err(parsing_error(
-                "At least one vertex or edge view definition should be present".to_string(),
+            Err(GSError::Parsing(
+                "At least one vertex or edge view definition should be present".to_owned(),
             ))
         } else {
             Ok(CreateViewAst::new(
@@ -623,7 +608,7 @@ impl<'a> GraphSurgeParser<'a> {
         &self,
         rule: Pair<Rule>,
         vertex_or_edge: VertexOrEdge,
-    ) -> Result<SectionDetails, GraphSurgeError> {
+    ) -> Result<SectionDetails, GSError> {
         let mut rules = rule.into_inner();
         let mut view_details = SectionDetails::default();
 
@@ -672,7 +657,7 @@ impl<'a> GraphSurgeParser<'a> {
         &self,
         rule: Pair<Rule>,
         vertex_or_edge: VertexOrEdge,
-    ) -> Result<Vec<WhereCondition>, GraphSurgeError> {
+    ) -> Result<Vec<WhereCondition>, GSError> {
         let rules = rule.into_inner();
 
         let mut where_conditions = Vec::new();
@@ -689,7 +674,7 @@ impl<'a> GraphSurgeParser<'a> {
         &self,
         rule: Pair<Rule>,
         vertex_or_edge: VertexOrEdge,
-    ) -> Result<WhereCondition, GraphSurgeError> {
+    ) -> Result<WhereCondition, GSError> {
         let mut rule = rule.into_inner();
 
         let where_condition_rule = get_next_rule(&mut rule, "condition_clause")?;
@@ -716,7 +701,7 @@ impl<'a> GraphSurgeParser<'a> {
         &self,
         rule: Pair<Rule>,
         vertex_or_edge: VertexOrEdge,
-    ) -> Result<Vec<WherePredicate>, GraphSurgeError> {
+    ) -> Result<Vec<WherePredicate>, GSError> {
         let rule = rule.into_inner();
 
         let mut where_predicates = Vec::new();
@@ -732,7 +717,7 @@ impl<'a> GraphSurgeParser<'a> {
         &self,
         rule: Pair<Rule>,
         vertex_or_edge: VertexOrEdge,
-    ) -> Result<WherePredicate, GraphSurgeError> {
+    ) -> Result<WherePredicate, GSError> {
         let mut rules = rule.into_inner();
 
         let next_rule = get_next_rule(&mut rules, "where_clause::complex_variable")?;
@@ -786,7 +771,7 @@ impl<'a> GraphSurgeParser<'a> {
         &self,
         rule: Pair<Rule>,
         vertex_or_edge: VertexOrEdge,
-    ) -> Result<Vec<GroupClause>, GraphSurgeError> {
+    ) -> Result<Vec<GroupClause>, GSError> {
         let rules = rule.into_inner();
 
         let mut group_clauses = Vec::new();
@@ -811,7 +796,7 @@ impl<'a> GraphSurgeParser<'a> {
                         }
                         r => return Err(unknown_rule_error("group_clause", r)),
                     };
-                group_clause.push(condition)
+                group_clause.push(condition);
             }
             group_clauses.push(group_clause);
         }
@@ -819,10 +804,7 @@ impl<'a> GraphSurgeParser<'a> {
         Ok(group_clauses)
     }
 
-    fn parse_aggregate_clauses(
-        &self,
-        rule: Pair<Rule>,
-    ) -> Result<Vec<AggregateClause>, GraphSurgeError> {
+    fn parse_aggregate_clauses(&self, rule: Pair<Rule>) -> Result<Vec<AggregateClause>, GSError> {
         let mut aggregate_clauses = Vec::new();
         for aggregate_clause_rule in rule.into_inner() {
             let mut rules = aggregate_clause_rule.into_inner();
@@ -836,7 +818,7 @@ impl<'a> GraphSurgeParser<'a> {
                 "count" => AggregationOperation::Count,
                 "avg" => AggregationOperation::Avg,
                 f => {
-                    return Err(parsing_error(format!(
+                    return Err(GSError::Parsing(format!(
                         "Aggregation function '{}' not supported",
                         f
                     )))
@@ -850,10 +832,7 @@ impl<'a> GraphSurgeParser<'a> {
         Ok(aggregate_clauses)
     }
 
-    fn parse_view_collection(
-        &self,
-        rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    fn parse_view_collection(&self, rule: Pair<Rule>) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let name = self.parse_variable(rules.next(), "collection::variable")?;
@@ -912,7 +891,7 @@ impl<'a> GraphSurgeParser<'a> {
     fn parse_computation_property(
         &self,
         rule: Pair<Rule>,
-    ) -> Result<ComputationProperties, GraphSurgeError> {
+    ) -> Result<ComputationProperties, GSError> {
         let value = match rule.as_rule() {
             Rule::value => {
                 ComputationProperties::Value(self.parse_value(rule, "computation_property::value")?)
@@ -931,7 +910,7 @@ impl<'a> GraphSurgeParser<'a> {
         &self,
         rule: Pair<Rule>,
         location: &str,
-    ) -> Result<Vec<(usize, usize)>, GraphSurgeError> {
+    ) -> Result<Vec<(usize, usize)>, GSError> {
         let mut pairs = Vec::new();
         let location_num = &format!("{}::num_usize", location);
 
@@ -945,11 +924,7 @@ impl<'a> GraphSurgeParser<'a> {
         Ok(pairs)
     }
 
-    fn parse_value(
-        &self,
-        rule: Pair<Rule>,
-        location: &str,
-    ) -> Result<PropertyValue, GraphSurgeError> {
+    fn parse_value(&self, rule: Pair<Rule>, location: &str) -> Result<PropertyValue, GSError> {
         let mut rule = rule.into_inner();
         let rule = get_next_rule(&mut rule, location)?;
         let value = match rule.as_rule() {
@@ -975,29 +950,57 @@ impl<'a> GraphSurgeParser<'a> {
         Ok(value)
     }
 
-    fn parse_run_computation(
-        &self,
-        rule: Pair<Rule>,
-    ) -> Result<Box<dyn GraphSurgeQuery>, GraphSurgeError> {
+    fn parse_run_computation(&self, rule: Pair<Rule>) -> Result<Box<dyn GraphSurgeQuery>, GSError> {
         let mut rules = rule.into_inner();
 
         let next_rule = get_next_rule(&mut rules, "run_computation::[type]?")?;
         let mut batch_size = None;
+        let mut comp_multipler = None;
+        let mut diff_multipler = None;
+        let mut limit = 0;
+        let mut use_lr = true;
         let (c_type, next_rule) = match next_rule.as_rule() {
-            Rule::keyword_differential => (ComputationType::Differential, rules.next()),
-            Rule::keyword_arranged_differential => {
-                (ComputationType::DifferentialArranged, rules.next())
-            }
             Rule::keyword_adaptive => {
                 batch_size =
                     Some(self.parse_num_usize(rules.next(), "run_computation::batch_size")?);
+                let mut num = self.parse_variable(rules.next(), "run_computation::comp_x::1")?;
+                let mut decimal =
+                    self.parse_variable(rules.next(), "run_computation::comp_x::2")?;
+                let mut float_num = format!("{}.{}", num, decimal);
+                comp_multipler = Some(float_num.parse().map_err(|e| {
+                    GSError::Parsing(format!("Could not parse '{}' as f64: {:?}", float_num, e))
+                })?);
+                num = self.parse_variable(rules.next(), "run_computation::diff_x::1")?;
+                decimal = self.parse_variable(rules.next(), "run_computation::diff_x::2")?;
+                float_num = format!("{}.{}", num, decimal);
+                diff_multipler = Some(float_num.parse().map_err(|e| {
+                    GSError::Parsing(format!("Could not parse '{}' as f64: {:?}", float_num, e))
+                })?);
+                limit = self.parse_num_usize(rules.next(), "run_computation::limit")?;
+                let algo = self.parse_variable(rules.next(), "run_computation::algo")?;
+                if algo == "avg" {
+                    use_lr = false;
+                } else if algo == "lr" {
+                    use_lr = true;
+                } else {
+                    return Err(GSError::Parsing(format!(
+                        "Unknown algo '{}' at 'run_computation::algo'",
+                        algo,
+                    )));
+                }
                 (ComputationType::Adaptive, rules.next())
             }
-            Rule::keyword_individual => (ComputationType::Individual, rules.next()),
-            Rule::keyword_arranged_individual => {
-                (ComputationType::IndividualArranged, rules.next())
+            Rule::keyword_2_stage_differential => {
+                (ComputationType::TwoStageDifferential, rules.next())
             }
-            Rule::keyword_comparedifferential => {
+            Rule::keyword_1_stage_differential => {
+                (ComputationType::OneStageDifferential, rules.next())
+            }
+            Rule::keyword_basic => (ComputationType::Basic, rules.next()),
+            Rule::keyword_timely => (ComputationType::Timely, rules.next()),
+            Rule::keyword_individual => (ComputationType::Individual, rules.next()),
+            Rule::keyword_basic_individual => (ComputationType::IndividualBasic, rules.next()),
+            Rule::keyword_compare_differential => {
                 (ComputationType::CompareDifferential, rules.next())
             }
             _ => (ComputationType::Adaptive, Some(next_rule)),
@@ -1028,9 +1031,9 @@ impl<'a> GraphSurgeParser<'a> {
             next_rule
         };
 
-        let cube_name = next_rule.as_str().to_string();
+        let cube_name = next_rule.as_str().to_owned();
 
-        let mut materialize_results = MaterializeResults::Full;
+        let mut materialize_results = MaterializeResults::None;
         let mut save_to = None;
         let mut hosts = Vec::new();
         let mut indices = None;
@@ -1047,6 +1050,7 @@ impl<'a> GraphSurgeParser<'a> {
                             materialize_results = MaterializeResults::Diff;
                         }
                         Rule::non_empty_string => {
+                            materialize_results = MaterializeResults::Full;
                             save_to =
                                 Some(self.parse_string(Some(rule), "run_computation::save_to")?);
                         }
@@ -1063,7 +1067,7 @@ impl<'a> GraphSurgeParser<'a> {
                         hosts.push(self.parse_string(
                             Some(string_rule),
                             "run_computation::hosts::non_empty_string",
-                        )?)
+                        )?);
                     }
                 }
                 Rule::split_indices => {
@@ -1093,14 +1097,14 @@ impl<'a> GraphSurgeParser<'a> {
             hosts,
             indices,
             batch_size,
+            comp_multipler,
+            diff_multipler,
+            limit,
+            use_lr,
         )))
     }
 
-    fn parse_string(
-        &self,
-        rule: Option<Pair<Rule>>,
-        location: &str,
-    ) -> Result<String, GraphSurgeError> {
+    fn parse_string(&self, rule: Option<Pair<Rule>>, location: &str) -> Result<String, GSError> {
         let string_rule = rule.ok_or_else(|| unwrap_error(format_args!("{}", location)))?;
         if string_rule.as_rule() != Rule::non_empty_string && string_rule.as_rule() != Rule::string
         {
@@ -1111,10 +1115,10 @@ impl<'a> GraphSurgeParser<'a> {
             .next()
             .ok_or_else(|| unwrap_error(format_args!("{}::inner_string", location)))?
             .as_str()
-            .to_string())
+            .to_owned())
     }
 
-    fn parse_bool(&self, rule: Pair<Rule>, location: &str) -> Result<bool, GraphSurgeError> {
+    fn parse_bool(&self, rule: Pair<Rule>, location: &str) -> Result<bool, GSError> {
         match rule
             .into_inner()
             .next()
@@ -1127,24 +1131,16 @@ impl<'a> GraphSurgeParser<'a> {
         }
     }
 
-    fn parse_num_isize(
-        &self,
-        rule: Option<Pair<Rule>>,
-        location: &str,
-    ) -> Result<isize, GraphSurgeError> {
-        Ok(self.parse_variable(rule, location)?.parse().map_err(|e| {
-            parsing_error(format!("Could not parse '{}' as isize: {:?}", location, e))
-        })?)
+    fn parse_num_isize(&self, rule: Option<Pair<Rule>>, location: &str) -> Result<isize, GSError> {
+        self.parse_variable(rule, location)?.parse().map_err(|e| {
+            GSError::Parsing(format!("Could not parse '{}' as isize: {:?}", location, e))
+        })
     }
 
-    fn parse_num_usize(
-        &self,
-        rule: Option<Pair<Rule>>,
-        location: &str,
-    ) -> Result<usize, GraphSurgeError> {
-        Ok(self.parse_variable(rule, location)?.parse().map_err(|e| {
-            parsing_error(format!("Could not parse '{}' as usize: {:?}", location, e))
-        })?)
+    fn parse_num_usize(&self, rule: Option<Pair<Rule>>, location: &str) -> Result<usize, GSError> {
+        self.parse_variable(rule, location)?.parse().map_err(|e| {
+            GSError::Parsing(format!("Could not parse '{}' as usize: {:?}", location, e))
+        })
     }
 
     fn parse_complex_variable(
@@ -1152,12 +1148,12 @@ impl<'a> GraphSurgeParser<'a> {
         rule: Pair<Rule>,
         location: &str,
         vertex_or_edge: VertexOrEdge,
-    ) -> Result<Operand, GraphSurgeError> {
+    ) -> Result<Operand, GSError> {
         let mut rules = rule.into_inner();
 
         let variable_left = {
             let variable_left_rule = get_next_rule(&mut rules, location)?;
-            variable_left_rule.as_str().to_string()
+            variable_left_rule.as_str().to_owned()
         };
 
         let next_rule = rules.next();
@@ -1168,7 +1164,7 @@ impl<'a> GraphSurgeParser<'a> {
                 "u" => Operand::SourceVertex(variable_right_key_id),
                 "v" => Operand::DestinationVertex(variable_right_key_id),
                 v => {
-                    return Err(parsing_error(format!(
+                    return Err(GSError::Parsing(format!(
                         "Unexpected operand selector '{}' at location '{}'",
                         v, location
                     )));
@@ -1186,7 +1182,7 @@ impl<'a> GraphSurgeParser<'a> {
             match complex_variable {
                 Operand::Property(_) => (),
                 p => {
-                    return Err(parsing_error(format!(
+                    return Err(GSError::Parsing(format!(
                         "Vertex where condition cannot refer to edge properties '{:?}'",
                         p
                     )));
@@ -1197,17 +1193,13 @@ impl<'a> GraphSurgeParser<'a> {
         Ok(complex_variable)
     }
 
-    fn parse_variable(
-        &self,
-        rule: Option<Pair<Rule>>,
-        location: &str,
-    ) -> Result<String, GraphSurgeError> {
-        Ok(rule.ok_or_else(|| unwrap_error(format_args!("{}", location)))?.as_str().to_string())
+    fn parse_variable(&self, rule: Option<Pair<Rule>>, location: &str) -> Result<String, GSError> {
+        Ok(rule.ok_or_else(|| unwrap_error(format_args!("{}", location)))?.as_str().to_owned())
     }
 
-    fn get_key_id(&self, key_string: &str, location: &str) -> Result<KeyId, GraphSurgeError> {
+    fn get_key_id(&self, key_string: &str, location: &str) -> Result<KeyId, GSError> {
         self.key_store.get_key_id(key_string).ok_or_else(|| {
-            parsing_error(format!(
+            GSError::Parsing(format!(
                 "Key '{}' at '{}' not present in the store",
                 key_string, location
             ))
@@ -1215,7 +1207,7 @@ impl<'a> GraphSurgeParser<'a> {
     }
 }
 
-fn inner_and_get_next_rule(rule: Pair<Rule>) -> Result<Pair<Rule>, GraphSurgeError> {
+fn inner_and_get_next_rule(rule: Pair<Rule>) -> Result<Pair<Rule>, GSError> {
     let rule_token = rule.as_rule();
     let mut inner = rule.into_inner();
     inner.next().ok_or_else(|| unwrap_error(format_args!("{:?}", rule_token)))
@@ -1224,21 +1216,21 @@ fn inner_and_get_next_rule(rule: Pair<Rule>) -> Result<Pair<Rule>, GraphSurgeErr
 fn get_next_and_inner_rules<'a>(
     rules: &'a mut Pairs<Rule>,
     location: &str,
-) -> Result<Pairs<'a, Rule>, GraphSurgeError> {
+) -> Result<Pairs<'a, Rule>, GSError> {
     Ok(get_next_rule(rules, location)?.into_inner())
 }
 
 fn get_next_rule<'a>(
     rules: &'a mut Pairs<Rule>,
     location: &str,
-) -> Result<Pair<'a, Rule>, GraphSurgeError> {
+) -> Result<Pair<'a, Rule>, GSError> {
     rules.next().ok_or_else(|| unwrap_error(format_args!("{}", location)))
 }
 
-fn unwrap_error(location: Arguments<'_>) -> GraphSurgeError {
-    parsing_error(format!("Unwrap parse error at location '{}'", location))
+fn unwrap_error(location: Arguments<'_>) -> GSError {
+    GSError::Parsing(format!("Unwrap parse error at location '{}'", location))
 }
 
-fn unknown_rule_error(location: &str, rule: Rule) -> GraphSurgeError {
-    parsing_error(format!("Unknown rule '{}::{:?}'", location, rule))
+fn unknown_rule_error(location: &str, rule: Rule) -> GSError {
+    GSError::Parsing(format!("Unknown rule '{}::{:?}'", location, rule))
 }

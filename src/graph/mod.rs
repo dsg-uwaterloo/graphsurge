@@ -1,7 +1,7 @@
 #![allow(clippy::unused_self)]
 
 use crate::create_pointer;
-use crate::error::GraphSurgeError;
+use crate::error::GSError;
 use crate::graph::key_store::KeyId;
 use crate::graph::properties::property_value::PropertyValue;
 use crate::graph::properties::Properties;
@@ -57,12 +57,12 @@ impl Graph {
         self.vertices.clear();
     }
 
-    pub fn vertex_count(&self) -> VertexId {
-        VertexId::try_from(self.vertices.len()).expect("Overflow")
+    pub fn vertex_count(&self) -> usize {
+        self.vertices.len()
     }
 
-    pub fn edges_count(&self) -> EdgeId {
-        EdgeId::try_from(self.edges.len()).expect("Overflow")
+    pub fn edges_count(&self) -> usize {
+        self.edges.len()
     }
 
     pub fn append_vertex(&mut self, vertex: Vertex) -> VertexId {
@@ -150,15 +150,11 @@ impl Graph {
         bin_dir: &str,
         thread_count: usize,
         block_size: Option<usize>,
-    ) -> Result<(), GraphSurgeError> {
+    ) -> Result<(), GSError> {
         self::serde::serialize(self, bin_dir, thread_count, block_size)
     }
 
-    pub fn deserialize(
-        &mut self,
-        bin_dir: &str,
-        thread_count: usize,
-    ) -> Result<(), GraphSurgeError> {
+    pub fn deserialize(&mut self, bin_dir: &str, thread_count: usize) -> Result<(), GSError> {
         self::serde::deserialize(self, bin_dir, thread_count)
     }
 }

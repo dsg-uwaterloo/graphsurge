@@ -1,5 +1,5 @@
-use crate::computations::TimelyTimeStamp;
-use crate::util::timer::GSTimer;
+use crate::util::timer::GsTimer;
+use gs_analytics_api::TimelyTimeStamp;
 use log::info;
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::generic::operator::Operator;
@@ -14,7 +14,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>, D: Data> MonitorStream<S, D> for Str
     fn monitor(&self, limit: usize, context: &'static str, worker_index: usize) -> Stream<S, D> {
         let mut count = 0;
         let mut current_limit = limit;
-        let timer = GSTimer::now();
+        let timer = GsTimer::now();
         let mut vector = Vec::new();
         self.unary(Pipeline, "Monitor", move |_, _| {
             move |input, output| {
@@ -23,13 +23,15 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>, D: Data> MonitorStream<S, D> for Str
                     count += vector.len();
                     output.session(&time).give_vec(&mut vector);
                     if count >= current_limit {
-                        info!(
-                            "[worker {:>2}] {} items processed for {} in {}",
-                            worker_index,
-                            count,
-                            context,
-                            timer.elapsed().to_seconds_string()
-                        );
+                        if worker_index == 0 {
+                            info!(
+                                "[worker {:>2}] {} items processed for {} in {}",
+                                worker_index,
+                                count,
+                                context,
+                                timer.elapsed().to_seconds_string()
+                            );
+                        }
                         current_limit += limit;
                     }
                 });

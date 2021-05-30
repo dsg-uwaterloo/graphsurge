@@ -6,26 +6,26 @@ use std::time::Duration;
 use std::time::Instant;
 
 #[derive(Clone, Copy, Debug)]
-pub struct GSTimer {
+pub struct GsTimer {
     instant: Instant,
 }
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct GSDuration {
+pub struct GsDuration {
     duration: Duration,
 }
 
-impl GSTimer {
+impl GsTimer {
     pub fn now() -> Self {
         Self { instant: Instant::now() }
     }
 
-    pub fn elapsed(&self) -> GSDuration {
-        GSDuration { duration: self.instant.elapsed() }
+    pub fn elapsed(&self) -> GsDuration {
+        GsDuration { duration: self.instant.elapsed() }
     }
 }
 
-impl GSDuration {
+impl GsDuration {
     pub fn to_millis_string(&self) -> String {
         const MICRO_PER_MILLI: u128 = 1_000;
         format!(
@@ -40,13 +40,13 @@ impl GSDuration {
     }
 }
 
-impl Debug for GSDuration {
+impl Debug for GsDuration {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         write!(f, "{:?}", self.duration)
     }
 }
 
-impl Deref for GSDuration {
+impl Deref for GsDuration {
     type Target = Duration;
 
     fn deref(&self) -> &Self::Target {
@@ -54,8 +54,8 @@ impl Deref for GSDuration {
     }
 }
 
-impl Add for GSDuration {
-    type Output = GSDuration;
+impl Add for GsDuration {
+    type Output = GsDuration;
 
     fn add(mut self, rhs: Self) -> Self::Output {
         self.duration += rhs.duration;
@@ -63,7 +63,7 @@ impl Add for GSDuration {
     }
 }
 
-impl AddAssign for GSDuration {
+impl AddAssign for GsDuration {
     fn add_assign(&mut self, rhs: Self) {
         self.duration += rhs.duration;
     }
@@ -71,7 +71,7 @@ impl AddAssign for GSDuration {
 
 #[cfg(test)]
 mod tests {
-    use crate::util::timer::GSDuration;
+    use crate::util::timer::GsDuration;
     use std::time::Duration;
 
     #[test]
@@ -81,7 +81,7 @@ mod tests {
             (152, 628_093_000, "152.628093 s", "152628.093 ms"),
         ];
         for (sec, nano, sec_str, milli_str) in inputs {
-            let duration = GSDuration { duration: Duration::new(sec, nano) };
+            let duration = GsDuration { duration: Duration::new(sec, nano) };
             assert_eq!(duration.to_seconds_string(), sec_str);
             assert_eq!(duration.to_millis_string(), milli_str);
         }

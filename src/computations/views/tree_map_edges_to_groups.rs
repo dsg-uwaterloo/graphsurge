@@ -2,8 +2,8 @@ use crate::computations::views::{
     AggregatedEdgeOutput, CreatedVertexId, EdgeMapState, TimelyInnerTimeStamp, TreeEdgeMapOutput,
     TreeVertexReverseGroupOutput,
 };
-use crate::computations::TimelyTimeStamp;
 use differential_dataflow::hashable::Hashable;
+use gs_analytics_api::TimelyTimeStamp;
 use hashbrown::HashMap;
 use timely::communication::Push;
 use timely::dataflow::channels::pact::Pipeline;

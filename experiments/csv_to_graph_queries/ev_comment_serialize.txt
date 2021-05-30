@@ -1,0 +1,9 @@
+load graph with
+    vertices type n from 'graph/vertices.txt' and
+    edges
+        type e:(n,n) from 'graph/edges.txt'
+    separator ','
+    comment '#';
+show schema;
+serialize to 'gs-bin';
+save graph to 'gsgraph';

@@ -1,4 +1,4 @@
-use crate::computations::bfs::BFS;
+use crate::computations::bfs::Bfs;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::iterate::Iterate;
 use differential_dataflow::operators::join::Join;
@@ -7,7 +7,7 @@ use differential_dataflow::Collection;
 use gs_analytics_api::{BasicComputation, PropertyInput, SimpleEdge};
 use timely::dataflow::Scope;
 
-impl BasicComputation for BFS {
+impl BasicComputation for Bfs {
     /// Code adapted from [Differential Dataflow](https://github.com/TimelyDataflow/differential-dataflow/blob/master/examples/bfs.rs).
     fn basic_computation<G: Scope>(
         &self,

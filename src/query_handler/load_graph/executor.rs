@@ -1,4 +1,4 @@
-use crate::error::{load_graph_error, GraphSurgeError};
+use crate::error::GSError;
 use crate::global_store::GlobalStore;
 use crate::graph::key_store::KeyStore;
 use crate::graph::properties::property_value::PropertyValue;
@@ -9,8 +9,8 @@ use crate::graph::{Edge, Graph};
 use crate::query_handler::load_graph::LoadGraphAst;
 use crate::query_handler::GraphSurgeQuery;
 use crate::query_handler::GraphSurgeResult;
-use crate::util::io::{get_buf_reader, GSWriter};
-use crate::util::timer::GSTimer;
+use crate::util::io::{get_buf_reader, GsWriter};
+use crate::util::timer::GsTimer;
 use csv::Reader;
 use gs_analytics_api::VertexId;
 use hashbrown::HashMap;
@@ -22,13 +22,13 @@ const DEFAULT_TYPE_STRING: &str = "string";
 const DEFAULT_SEPARATOR: u8 = b',';
 pub const DEFAULT_HAS_HEADERS: bool = true;
 
-type Function = dyn Fn(&str, &str, &str) -> Result<PropertyValue, GraphSurgeError>;
+type Function = dyn Fn(&str, &str, &str) -> Result<PropertyValue, GSError>;
 type PropertyValueClosure = Box<Function>;
 type PropertyValueClosureIndex<'a> = &'a Function;
 type ClosureMappings<'a> = HashMap<String, PropertyValueClosureIndex<'a>>;
 
 impl GraphSurgeQuery for LoadGraphAst {
-    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GraphSurgeError> {
+    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GSError> {
         global_store.graph.reset();
         global_store.key_store.reset();
 
@@ -38,22 +38,26 @@ impl GraphSurgeQuery for LoadGraphAst {
         let closures: Vec<PropertyValueClosure> = vec![
             Box::new(|property_string: &str, vertex_id_string: &str, file_path: &str| {
                 property_string.parse().map(PropertyValue::Isize).map_err(|_| {
-                    load_graph_error(format!(
-                        "Could not parse property value '{}' as isize for vertex id '{}' in file '{}'",
-                        property_string, vertex_id_string, file_path,
-                    ))
+                    GSError::GraphParse(
+                        property_string.to_owned(),
+                        "isize",
+                        vertex_id_string.to_owned(),
+                        file_path.to_owned(),
+                    )
                 })
             }),
             Box::new(|property_string: &str, vertex_id_string: &str, file_path: &str| {
                 property_string.parse().map(PropertyValue::Bool).map_err(|_| {
-                    load_graph_error(format!(
-                        "Could not parse property value '{}' as bool for vertex id '{}' in file '{}'",
-                        property_string, vertex_id_string, file_path,
-                    ))
+                    GSError::GraphParse(
+                        property_string.to_owned(),
+                        "bool",
+                        vertex_id_string.to_owned(),
+                        file_path.to_owned(),
+                    )
                 })
             }),
             Box::new(|property_string: &str, _vertex_id_string: &str, _file_path: &str| {
-                Ok(PropertyValue::String(property_string.to_string()))
+                Ok(PropertyValue::String(property_string.to_owned()))
             }),
         ];
 
@@ -94,7 +98,7 @@ impl GraphSurgeQuery for LoadGraphAst {
 
         if let Some(dir) = &self.save_mappings_dir {
             let file_path = format!("{}/vertex_mappings.txt", dir);
-            let mut file_buffer = GSWriter::new(file_path)?;
+            let mut file_buffer = GsWriter::new(file_path)?;
             file_buffer.write_file_lines(
                 vertices_map
                     .iter()
@@ -116,19 +120,19 @@ fn load_vertices(
     total_vertices_count: &mut usize,
     mappings: &ClosureMappings,
     load_graph_ast: &LoadGraphAst,
-) -> Result<(), GraphSurgeError> {
+) -> Result<(), GSError> {
     let graph = &mut global_store.graph;
     let mut reader = get_csv_reader(vertex_file, load_graph_ast)?;
 
     let property_types = if load_graph_ast.has_headers {
         let schema_parts = reader.headers().map_err(|e| {
-            load_graph_error(format!("Could not load headers from file '{}': {}", vertex_file, e))
+            GSError::LoadGraph(format!("Could not load headers from file '{}': {}", vertex_file, e))
         })?;
         let mut schema_iter = schema_parts.iter();
 
         if let Some(id_part) = schema_iter.next() {
             if id_part.contains(':') && !id_part.to_ascii_lowercase().contains(":id") {
-                return Err(load_graph_error(format!(
+                return Err(GSError::LoadGraph(format!(
                     "First column should be ':id' in file '{}'",
                     vertex_file
                 )));
@@ -139,22 +143,22 @@ fn load_vertices(
         None
     };
 
-    let timer = GSTimer::now();
+    let timer = GsTimer::now();
     for (index, line) in reader.records().filter_map(Result::ok).enumerate() {
         let mut line_parts = line.iter();
 
         let vertex_id_string = line_parts.next().ok_or_else(|| {
-            load_graph_error(format!("Could not read vertex id from file '{}'", vertex_file))
+            GSError::LoadGraph(format!("Could not read vertex id from file '{}'", vertex_file))
         })?;
-        if vertex_id_string == "" {
-            return Err(load_graph_error(format!(
+        if vertex_id_string.is_empty() {
+            return Err(GSError::LoadGraph(format!(
                 "Vertex id string is empty in line '{}' in file '{}'",
                 index, vertex_file
             )));
         }
 
         if vertices_map.contains_key(vertex_id_string) {
-            return Err(load_graph_error(format!(
+            return Err(GSError::LoadGraph(format!(
                 "Duplicate vertex id '{}' found in file '{}'",
                 vertex_id_string, vertex_file
             )));
@@ -167,7 +171,7 @@ fn load_vertices(
         };
 
         add_new_vertex(
-            vertex_id_string.to_string(),
+            vertex_id_string.to_owned(),
             properties,
             graph,
             vertices_map,
@@ -202,18 +206,18 @@ fn load_edges(
     total_edges_count: &mut usize,
     mappings: &ClosureMappings,
     load_graph_ast: &LoadGraphAst,
-) -> Result<(), GraphSurgeError> {
+) -> Result<(), GSError> {
     let graph = &mut global_store.graph;
     let mut reader = get_csv_reader(edge_file, load_graph_ast)?;
 
     let property_types = if load_graph_ast.has_headers {
         let schema_parts = reader.headers().map_err(|e| {
-            load_graph_error(format!("Could not load headers from file '{}': {}", edge_file, e))
+            GSError::LoadGraph(format!("Could not load headers from file '{}': {}", edge_file, e))
         })?;
         let mut schema_iter = schema_parts.iter();
         if let Some(start_id_part) = schema_iter.next() {
             if start_id_part.contains(':') && !start_id_part.to_lowercase().contains(":start_id") {
-                return Err(load_graph_error(format!(
+                return Err(GSError::LoadGraph(format!(
                     "First column should be ':start_id' in file '{}'",
                     edge_file
                 )));
@@ -221,7 +225,7 @@ fn load_edges(
         }
         if let Some(end_id_part) = schema_iter.next() {
             if end_id_part.contains(':') && !end_id_part.to_lowercase().contains(":end_id") {
-                return Err(load_graph_error(format!(
+                return Err(GSError::LoadGraph(format!(
                     "Second column should be ':end_id' in file '{}'",
                     edge_file
                 )));
@@ -233,18 +237,30 @@ fn load_edges(
         None
     };
 
-    let timer = GSTimer::now();
+    let timer = GsTimer::now();
     let mut src_empty_count = 0;
     let mut dst_empty_count = 0;
+    let mut parsing_error_count = 0;
     let mut src_id_missing_count = 0;
     let mut dst_id_missing_count = 0;
     for (index, line) in reader.records().filter_map(Result::ok).enumerate() {
+        if index > 0 && index % 1_000_000 == 0 {
+            info!("Processed {} lines in {}", index, timer.elapsed().to_seconds_string());
+        }
         let mut line_parts = line.iter();
 
-        let from_id_string = line_parts.next().ok_or_else(|| {
-            load_graph_error(format!("Could not read from_vertex from file {}", edge_file))
-        })?;
-        if from_id_string == "" {
+        let from_id_string;
+        if let Some(part) = line_parts.next() {
+            from_id_string = part;
+        } else {
+            debug!(
+                "Could not read from_vertex at line '{}' in file '{}'. Ignoring",
+                index, edge_file
+            );
+            parsing_error_count += 1;
+            continue;
+        }
+        if from_id_string.is_empty() {
             debug!("From id string is empty at line '{}' in file '{}'. Ignoring", index, edge_file);
             src_empty_count += 1;
             continue;
@@ -253,7 +269,7 @@ fn load_edges(
             *from_id
         } else if load_graph_ast.only_edge_files {
             add_new_vertex(
-                from_id_string.to_string(),
+                from_id_string.to_owned(),
                 Properties::default(),
                 graph,
                 vertices_map,
@@ -268,10 +284,18 @@ fn load_edges(
             continue;
         };
 
-        let to_id_string = line_parts.next().ok_or_else(|| {
-            load_graph_error(format!("Could not read to_vertex from file {}", edge_file))
-        })?;
-        if to_id_string == "" {
+        let to_id_string;
+        if let Some(part) = line_parts.next() {
+            to_id_string = part;
+        } else {
+            debug!(
+                "Could not read to_vertex at line '{}' in file '{}'. Ignoring",
+                index, edge_file
+            );
+            parsing_error_count += 1;
+            continue;
+        }
+        if to_id_string.is_empty() {
             debug!("To id string is empty at line '{}' in file '{}'. Ignoring", index, edge_file);
             dst_empty_count += 1;
             continue;
@@ -280,7 +304,7 @@ fn load_edges(
             *to_id
         } else if load_graph_ast.only_edge_files {
             add_new_vertex(
-                to_id_string.to_string(),
+                to_id_string.to_owned(),
                 Properties::default(),
                 graph,
                 vertices_map,
@@ -303,22 +327,21 @@ fn load_edges(
 
         graph.append_edge(Edge::new(properties, from_id, to_id));
         *total_edges_count += 1;
-
-        if index > 0 && index % 1_000_000 == 0 {
-            info!("Processed {} edges in {}", index, timer.elapsed().to_seconds_string());
-        }
     }
-    if src_empty_count > 0 {
-        warn!("Skipped {} edges with empty src ids", src_empty_count);
+    if src_empty_count > 0_i32 {
+        warn!("Skipped {} lines with empty src ids", src_empty_count);
     }
-    if dst_empty_count > 0 {
-        warn!("Skipped {} edges with empty dst ids", dst_empty_count);
+    if parsing_error_count > 0_i32 {
+        warn!("Skipped {} lines which failed to parse", parsing_error_count);
     }
-    if src_id_missing_count > 0 {
-        warn!("Skipped {} edges with unmapped src ids to existing vertices", src_id_missing_count);
+    if dst_empty_count > 0_i32 {
+        warn!("Skipped {} lines with empty dst ids", dst_empty_count);
     }
-    if dst_id_missing_count > 0 {
-        warn!("Skipped {} edges with unmapped dst ids to existing vertices", dst_id_missing_count);
+    if src_id_missing_count > 0_i32 {
+        warn!("Skipped {} lines with unmapped src ids to existing vertices", src_id_missing_count);
+    }
+    if dst_id_missing_count > 0_i32 {
+        warn!("Skipped {} lines with unmapped dst ids to existing vertices", dst_id_missing_count);
     }
     Ok(())
 }
@@ -328,27 +351,27 @@ fn load_schema<'a, 'b>(
     file_path: &str,
     key_store: &mut KeyStore,
     mappings: &'b ClosureMappings,
-) -> Result<Vec<(PropertyKeyId, PropertyValueClosureIndex<'b>)>, GraphSurgeError> {
+) -> Result<Vec<(PropertyKeyId, PropertyValueClosureIndex<'b>)>, GSError> {
     let mut property_types = Vec::new();
     for schema in schema_parts {
         let mut parts = schema.split(':');
 
-        let column_name = parts.next().unwrap_or_else(|| "");
+        let column_name = parts.next().unwrap_or("");
         if column_name.is_empty() {
-            return Err(load_graph_error(format!(
+            return Err(GSError::LoadGraph(format!(
                 "Empty column name found in file '{}'",
                 file_path
             )));
         }
-        let column_type_string = parts.next().unwrap_or_else(|| DEFAULT_TYPE_STRING);
+        let column_type_string = parts.next().unwrap_or(DEFAULT_TYPE_STRING);
         if column_type_string.is_empty() {
-            return Err(load_graph_error(format!(
+            return Err(GSError::LoadGraph(format!(
                 "Empty column type found in file '{}'",
                 file_path
             )));
         }
         let closure_index = *mappings.get(&column_type_string.to_lowercase()).ok_or_else(|| {
-            load_graph_error(format!(
+            GSError::LoadGraph(format!(
                 "Unrecognized column type '{}' in file '{}'",
                 column_type_string, file_path,
             ))
@@ -363,16 +386,16 @@ fn load_property_values<'a>(
     vertex_id_string: &str,
     file_path: &str,
     property_types: &[(PropertyKeyId, PropertyValueClosureIndex)],
-) -> Result<Properties, GraphSurgeError> {
+) -> Result<Properties, GSError> {
     let mut properties = Properties::default();
     let mut count = 0;
     for (index, property_string) in line_parts.enumerate() {
         count += 1;
-        if property_string == "" {
+        if property_string.is_empty() {
             continue;
         }
         let (property_key_id, property_closure) = property_types.get(index).ok_or_else(|| {
-            load_graph_error(format!(
+            GSError::LoadGraph(format!(
                 "No. of columns for vertex id '{}' does not match header in file '{}'",
                 vertex_id_string, file_path,
             ))
@@ -381,7 +404,7 @@ fn load_property_values<'a>(
         properties.add_new_property(*property_key_id, property_value);
     }
     if property_types.len() != count {
-        return Err(load_graph_error(format!(
+        return Err(GSError::LoadGraph(format!(
             "Total number of columns for vertex id '{}' does not match header in file '{}'",
             vertex_id_string, file_path,
         )));
@@ -392,7 +415,7 @@ fn load_property_values<'a>(
 fn get_csv_reader(
     file_path: &str,
     load_graph_ast: &LoadGraphAst,
-) -> Result<Reader<BufReader<File>>, GraphSurgeError> {
+) -> Result<Reader<BufReader<File>>, GSError> {
     Ok(csv::ReaderBuilder::new()
         .has_headers(load_graph_ast.has_headers)
         .delimiter(load_graph_ast.separator.unwrap_or(DEFAULT_SEPARATOR))

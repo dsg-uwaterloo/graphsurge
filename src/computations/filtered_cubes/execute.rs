@@ -5,12 +5,12 @@ use crate::computations::filtered_cubes::process_edge_diff::EdgeDiff;
 use crate::computations::filtered_cubes::reduce_matrices::ReduceMatrices;
 use crate::computations::filtered_cubes::{DiffProcessingData, DimensionOrder};
 use crate::computations::views::monitor::MonitorStream;
-use crate::error::{create_cube_error, GraphSurgeError};
+use crate::error::GSError;
 use crate::filtered_cubes::timestamp::timestamp_mappings::{
     get_timestamp_mappings, TimestampMappings,
 };
 use crate::filtered_cubes::timestamp::GSTimestamp;
-use crate::filtered_cubes::{CubeDataEntries, DimensionLength, DimensionLengths};
+use crate::filtered_cubes::{DimensionLength, DimensionLengths};
 use crate::graph::stream_data::get_timely_edgeid_stream;
 use crate::graph::Graph;
 use crate::graph::GraphPointer;
@@ -21,6 +21,7 @@ use hashbrown::HashMap;
 use itertools::Itertools;
 use log::info;
 
+use gs_analytics_api::CubeDataEntries;
 use timely::dataflow::operators::broadcast::Broadcast;
 use timely::dataflow::operators::capture::capture::Capture;
 use timely::dataflow::operators::capture::event::Event::Messages;
@@ -44,7 +45,7 @@ pub fn execute(
     threads_per_process: usize,
     process_id: usize,
     hosts: &[String],
-) -> Result<Vec<CubeDataEntries<GSTimestamp>>, GraphSurgeError> {
+) -> Result<Vec<CubeDataEntries<GSTimestamp>>, GSError> {
     let graph_pointer = GraphPointer::new(&graph);
 
     let config = if hosts.len() > 1 {
@@ -62,7 +63,7 @@ pub fn execute(
     };
 
     info!("Starting execution for new filtered cube...");
-    print_memory_usage(format_args!("starting timely"));
+    print_memory_usage(format_args!("starting differential workers"));
     let worker_threads = timely::execute(config, move |worker| {
         let timer = std::time::Instant::now();
 
@@ -108,7 +109,7 @@ pub fn execute(
                 .flat_map(|orders| orders.into_iter().enumerate())
                 .inspect(move |(index, order)| {
                     if worker_index == 0 {
-                        info!("order {} = {:?}", index, order)
+                        info!("order {} = {:?}", index, order);
                     }
                 })
                 // Send all matrices to worker 0.
@@ -131,8 +132,8 @@ pub fn execute(
             worker.step();
         }
 
-        info!("Done on worker {:>2} in {:?}. Processing diffs...", worker_index, timer.elapsed());
         if worker_index == 0 {
+            info!("Done on worker {:>2} in {:?}. Processing diffs...", worker_index, timer.elapsed());
             print_memory_usage(format_args!("processed edges"));
         }
 
@@ -173,15 +174,14 @@ pub fn execute(
 
         output_stream.into_iter().flat_map(fnn).collect_vec()
     })
-    .map_err(|e| create_cube_error(format!("Timely error: {:?}", e)))?;
+        .map_err(GSError::Timely)?;
     let worker_results = worker_threads.join();
     print_memory_usage(format_args!("done with timely"));
 
     let mut full_results = HashMap::new();
     let edges = &graph.edges();
     for result in worker_results {
-        let maps = result
-            .map_err(|e| create_cube_error(format!("Results from timely has errors: {:?}", e)))?;
+        let maps = result.map_err(GSError::TimelyResults)?;
         for map in maps {
             for (key, values) in map {
                 let entry = full_results.entry(key).or_insert_with(|| (Vec::new(), Vec::new()));

@@ -1,16 +1,14 @@
-use crate::error::{create_cube_error, GraphSurgeError};
+use crate::error::GSError;
 use crate::filtered_cubes::timestamp::timestamp_mappings::get_timestamp_mappings;
 use crate::filtered_cubes::timestamp::GSTimestamp;
-use crate::filtered_cubes::{
-    CubeDataEntries, DimensionLength, DimensionLengths, FilteredCube, FilteredCubeData,
-};
+use crate::filtered_cubes::{DimensionLength, DimensionLengths, FilteredCube};
 use crate::global_store::GlobalStore;
 use crate::query_handler::create_filtered_cube::executor::print_totals;
 use crate::query_handler::load_cube::LoadCubeAst;
 use crate::query_handler::GraphSurgeQuery;
 use crate::GraphSurgeResult;
 use graph_map::GraphMMap;
-use gs_analytics_api::{DiffCount, SimpleEdge, VertexId};
+use gs_analytics_api::{CubeDataEntries, DiffCount, FilteredCubeData, SimpleEdge, VertexId};
 use itertools::Itertools;
 use log::info;
 use std::convert::TryFrom;
@@ -22,30 +20,37 @@ use timely::PartialOrder;
 const DEFAULT_SEPARATOR: char = ',';
 
 impl GraphSurgeQuery for LoadCubeAst {
-    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GraphSurgeError> {
+    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GSError> {
         if global_store.filtered_cube_store.cubes.contains_key(&self.name) {
-            return Err(create_cube_error(format!(
-                "Cube name '{}' already exists in store",
-                self.name
-            )));
+            return Err(GSError::CollectionAlreadyExists(self.name.clone()));
         }
 
         info!("Loading data from {}", self.dir);
 
         if self.threads.is_some() {
-            info!("Ignoring threads...")
+            info!("Ignoring threads...");
         }
 
-        let dimension_lengths: DimensionLengths = vec![self.m, self.n]
-            .into_iter()
-            .map(|length| DimensionLength::try_from(length).expect("DimensionLength overflow"))
-            .collect();
+        let dimension_lengths: DimensionLengths = if cfg!(feature = "nd-timestamps") {
+            vec![self.m, self.n]
+        } else {
+            if self.m != 1 {
+                return Err(GSError::Collection("Multiple dimensions not supported".to_owned()));
+            }
+            vec![self.n]
+        }
+        .into_iter()
+        .map(|length| DimensionLength::try_from(length).expect("DimensionLength overflow"))
+        .collect();
         let mut filtered_cube_data: Vec<CubeDataEntries<GSTimestamp>> = Vec::new();
         let timestamp_mappings = get_timestamp_mappings(&dimension_lengths);
 
         for (ts_index, (_, timestamp)) in timestamp_mappings.0.iter().enumerate() {
-            let i = timestamp.get_value_at(0, 2);
-            let j = timestamp.get_value_at(1, 2);
+            let (i, j) = if cfg!(feature = "nd-timestamps") {
+                (timestamp.get_value_at(0, 2), timestamp.get_value_at(1, 2))
+            } else {
+                (0, timestamp.get_value_at(0, 1))
+            };
 
             let gmap_path = format!("{}/{}{}_{}.gmap", self.dir, self.prefix, i, j);
             let (batch, adds, dels) = if Path::new(&format!("{}.offsets", gmap_path)).exists() {
@@ -53,13 +58,7 @@ impl GraphSurgeQuery for LoadCubeAst {
                 let batch = (0..graph.nodes())
                     .flat_map(|node| {
                         graph.edges(node).iter().map(move |&neighbor| {
-                            (
-                                (
-                                    VertexId::try_from(node).expect("overflow"),
-                                    VertexId::try_from(neighbor).expect("overflow"),
-                                ),
-                                1,
-                            )
+                            ((VertexId::try_from(node).expect("overflow"), neighbor), 1)
                         })
                     })
                     .collect_vec();
@@ -167,10 +166,11 @@ impl GraphSurgeQuery for LoadCubeAst {
 #[cfg(test)]
 mod tests {
     use crate::filtered_cubes::timestamp::GSTimestamp;
-    use crate::filtered_cubes::CubeDataEntries;
     use crate::global_store::GlobalStore;
     use crate::process_query;
+    use gs_analytics_api::CubeDataEntries;
 
+    #[cfg(feature = "nd-timestamps")]
     #[test]
     fn test_2d() {
         assert(
@@ -214,7 +214,7 @@ mod tests {
             &[
                 (
                     0,
-                    GSTimestamp::new(&[0, 0]),
+                    GSTimestamp::new(&[0]),
                     (
                         vec![],
                         vec![
@@ -230,16 +230,16 @@ mod tests {
                     ),
                     (8, 0),
                 ),
-                (1, GSTimestamp::new(&[0, 1]), (vec![], vec![((2, 9), 1), ((4, 5), -1)]), (1, 1)),
+                (1, GSTimestamp::new(&[1]), (vec![], vec![((2, 9), 1), ((4, 5), -1)]), (1, 1)),
                 (
                     2,
-                    GSTimestamp::new(&[0, 2]),
+                    GSTimestamp::new(&[2]),
                     (vec![], vec![((9, 3), 1), ((6, 5), 1), ((5, 9), -1), ((2, 3), -1)]),
                     (2, 2),
                 ),
                 (
                     3,
-                    GSTimestamp::new(&[0, 3]),
+                    GSTimestamp::new(&[3]),
                     (vec![], vec![((4, 5), 1), ((2, 3), 1), ((2, 9), -1), ((9, 3), -1)]),
                     (2, 2),
                 ),

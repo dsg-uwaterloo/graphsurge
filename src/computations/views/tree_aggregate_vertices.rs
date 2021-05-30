@@ -1,8 +1,8 @@
 use crate::computations::views::{
     QueryProperties, QueryProperty, TreeAggregatedVertexOutput, TreeVertexReduceOutput,
 };
-use crate::computations::TimelyTimeStamp;
 use crate::graph::properties::property_value::PropertyValue;
+use gs_analytics_api::TimelyTimeStamp;
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::generic::operator::Operator;
 use timely::dataflow::{Scope, Stream};
@@ -31,7 +31,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> TreeAggregateVertices<S>
                                 .give((order_index, (created_vertex_id, final_properties, group)));
                         }
                     }
-                })
+                });
             }
         })
     }

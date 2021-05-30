@@ -1,6 +1,6 @@
 use crate::computations::filtered_cubes::Matrices;
-use crate::computations::TimelyTimeStamp;
 use crate::filtered_cubes::DimensionLengths;
+use gs_analytics_api::TimelyTimeStamp;
 use hashbrown::HashMap;
 use itertools::Itertools;
 use log::info;
@@ -61,7 +61,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>> ReduceMatrices<S> for Stream<S, Matr
                     }
                     output.session(&time).give(matrices);
                 }
-            })
+            });
         })
     }
 }

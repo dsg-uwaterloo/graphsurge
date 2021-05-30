@@ -1,11 +1,11 @@
-use crate::computations::spsp::{bidijkstra_arranged, SPSP};
+use crate::computations::spsp::{bidijkstra_arranged, Spsp};
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::arrange::ArrangeByKey;
 use differential_dataflow::Collection;
 use gs_analytics_api::{BasicComputation, PropertyInput, SimpleEdge};
 use timely::dataflow::Scope;
 
-impl BasicComputation for SPSP {
+impl BasicComputation for Spsp {
     fn basic_computation<G: Scope>(
         &self,
         edges: &Collection<G, SimpleEdge>,

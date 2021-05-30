@@ -1,7 +1,6 @@
-use crate::computations::TimelyTimeStamp;
 use crate::graph::properties::property_value::PropertyValue;
 use abomonation_derive::Abomonation;
-use gs_analytics_api::{EdgeId, VertexId};
+use gs_analytics_api::{EdgeId, TimelyTimeStamp, VertexId};
 use timely::order::Product;
 
 mod aggregate_edges;

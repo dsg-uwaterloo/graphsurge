@@ -1,13 +1,13 @@
 use crate::filtered_cubes::timestamp::GSTimestamp;
 use crate::filtered_cubes::DimensionLength;
+use gs_analytics_api::GsTimestampIndex;
 use hashbrown::HashMap;
 use itertools::Itertools;
 
-pub type GSTimestampIndex = usize;
-pub type AddGSTimestampIndex = GSTimestampIndex;
-pub type SubtractGSTimestampIndex = GSTimestampIndex;
+pub type AddGSTimestampIndex = GsTimestampIndex;
+pub type SubtractGSTimestampIndex = GsTimestampIndex;
 pub type DiffNeighborhood = (Vec<AddGSTimestampIndex>, Vec<SubtractGSTimestampIndex>);
-pub type TimestampToIndexMap = HashMap<GSTimestamp, GSTimestampIndex>;
+pub type TimestampToIndexMap = HashMap<GSTimestamp, GsTimestampIndex>;
 pub type TimestampMappings = (Vec<(DiffNeighborhood, GSTimestamp)>, TimestampToIndexMap);
 
 pub fn get_timestamp_mappings(dimension_lengths: &[DimensionLength]) -> TimestampMappings {
@@ -28,7 +28,7 @@ pub fn get_timestamp_mappings(dimension_lengths: &[DimensionLength]) -> Timestam
 fn map_timestamp_to_index(
     timestamps: &[GSTimestamp],
     index_map: &TimestampToIndexMap,
-) -> Vec<GSTimestampIndex> {
+) -> Vec<GsTimestampIndex> {
     timestamps
         .iter()
         .map(|ts| index_map.get(ts).copied().expect("Timestamp index map should exist."))
@@ -58,6 +58,7 @@ mod tests {
         assert_mappings(&dimension_lengths, &expected_data);
     }
 
+    #[cfg(feature = "nd-timestamps")]
     #[test]
     fn test2() {
         let dimension_lengths = vec![3, 3];

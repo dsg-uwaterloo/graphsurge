@@ -1,0 +1,15 @@
+deserialize from 'graph/serde';
+set threads 32 and process_id 0;
+create view collection vcol_manual_order where
+    [u.city = v.city and affinity < 3],
+        [u.city = v.city and affinity < 6],
+        [u.city = v.city and affinity < 9],
+        [u.state = v.state and affinity < 3],
+        [u.state = v.state and affinity < 6],
+        [u.state = v.state and affinity < 9],
+        [u.country = v.country and affinity < 3],
+        [u.country = v.country and affinity < 6],
+        [u.country = v.country and affinity < 9]
+    manually_ordered
+    hosts 'h0:9000' 'h1:9000' 'h2:9000' 'h3:9000';
+serialize cube vcol_manual_order to 'vcol_data/vcol_manual_order_serde' threads 10;

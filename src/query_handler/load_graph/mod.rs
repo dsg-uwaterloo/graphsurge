@@ -20,7 +20,7 @@ impl std::fmt::Display for LoadGraphAst {
             if let Some(vf) = &self.vertex_file {
                 format!("vertices from '{}' and ", vf)
             } else {
-                "".to_string()
+                String::new()
             },
             self.edge_file,
         )

@@ -15,7 +15,7 @@ use crate::computations::views::{
     EdgeViewOutput, ExecutionType, GroupsLength, VertexGroupMapOutput, VertexReverseGroupOutput,
     VertexViewOutput,
 };
-use crate::error::{create_view_error, GraphSurgeError};
+use crate::error::GSError;
 use crate::global_store::GlobalStore;
 use crate::graph::stream_data::{get_timely_edgeid_stream, get_timely_vertex_stream};
 use crate::graph::GraphPointer;
@@ -45,7 +45,7 @@ pub fn execute(
     create_view_ast: CreateViewAst,
     global_store: &GlobalStore,
     execution_type: ExecutionType,
-) -> Result<ViewResults, GraphSurgeError> {
+) -> Result<ViewResults, GSError> {
     let graph_pointer = GraphPointer::new(&global_store.graph);
 
     info!("Starting execution for new view...");
@@ -244,15 +244,15 @@ pub fn execute(
             }
             (vertex_results, edge_results, aggregated_output_results)
         })
-        .map_err(|e| create_view_error(format!("Timely error: {:?}", e)))?
+        .map_err(GSError::Timely)?
         .join();
 
     let mut all_vertex_results = Vec::new();
     let mut all_edge_results = Vec::new();
     let mut all_aggregated_output_results = Vec::new();
     for result in worker_results {
-        let (vertex_results, edge_results, aggregated_output_results) = result
-            .map_err(|e| create_view_error(format!("Results from timely has errors: {:?}", e)))?;
+        let (vertex_results, edge_results, aggregated_output_results) =
+            result.map_err(GSError::TimelyResults)?;
         all_vertex_results.extend(vertex_results);
         all_edge_results.extend(edge_results);
         all_aggregated_output_results.extend(aggregated_output_results);

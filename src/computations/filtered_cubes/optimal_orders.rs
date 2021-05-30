@@ -1,6 +1,6 @@
 use crate::computations::filtered_cubes::tsp::tsp;
 use crate::computations::filtered_cubes::{DimensionOrders, Matrices, Matrix};
-use crate::computations::TimelyTimeStamp;
+use gs_analytics_api::TimelyTimeStamp;
 use itertools::Itertools;
 use timely::dataflow::operators::map::Map;
 use timely::dataflow::{Scope, Stream};

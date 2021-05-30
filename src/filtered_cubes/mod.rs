@@ -1,10 +1,10 @@
 use crate::create_generic_pointer;
 use crate::filtered_cubes::materialise::get_differential_data;
 use crate::filtered_cubes::materialise::DifferentialData;
-use crate::filtered_cubes::timestamp::timestamp_mappings::{GSTimestampIndex, TimestampMappings};
+use crate::filtered_cubes::timestamp::timestamp_mappings::TimestampMappings;
 use crate::filtered_cubes::timestamp::{DimensionId, GSTimestamp};
-use crate::util::timer::GSTimer;
-use gs_analytics_api::{DiffCount, EdgeId, SimpleEdge};
+use crate::util::timer::GsTimer;
+use gs_analytics_api::{DiffCount, EdgeId, FilteredCubeData, SimpleEdge};
 use hashbrown::HashMap;
 use itertools::Itertools;
 use log::info;
@@ -37,7 +37,7 @@ impl Display for FilteredCubeStore {
             f,
             "{}",
             if self.cubes.is_empty() {
-                "No cubes registered".to_string()
+                "No cubes registered".to_owned()
             } else {
                 self.cubes
                     .iter()
@@ -60,13 +60,7 @@ pub struct FilteredCube {
 }
 pub type DimensionLengths = Vec<DimensionLength>;
 pub type DimensionLength = DimensionId;
-#[derive(Serialize, Deserialize, new, Clone)]
-pub struct FilteredCubeData<T> {
-    pub entries: Vec<CubeDataEntries<T>>,
-}
-pub type CubeDataEntries<T> = (GSTimestampIndex, T, FilteredCubeEntries, (usize, usize));
 pub type CubeDataEntries2<T> = (T, T, Vec<(SimpleEdge, DiffCount)>);
-pub type FilteredCubeEntries = (Vec<SimpleEdge>, Vec<(SimpleEdge, DiffCount)>);
 pub type FilteredCubeEntriesEdgeId = (Vec<EdgeId>, Vec<(EdgeId, DiffCount)>);
 create_generic_pointer!(CubePointer, FilteredCubeData);
 
@@ -83,7 +77,7 @@ impl FilteredCube {
     pub fn prepare_differential_data(&mut self) {
         if self.differential_data.is_none() {
             info!("Materializing differential data:");
-            let timer = GSTimer::now();
+            let timer = GsTimer::now();
             let diff_data = get_differential_data(&self);
             info!("Data materialized in {}", timer.elapsed().to_seconds_string());
             self.differential_data = Some(diff_data);

@@ -1,7 +1,7 @@
-use crate::error::{create_cube_error, GraphSurgeError};
+use crate::error::GSError;
 use crate::filtered_cubes::timestamp::timestamp_mappings::get_timestamp_mappings;
 use crate::filtered_cubes::timestamp::GSTimestamp;
-use crate::filtered_cubes::{DimensionLength, FilteredCube, FilteredCubeData};
+use crate::filtered_cubes::{DimensionLength, FilteredCube};
 use crate::global_store::GlobalStore;
 use crate::query_handler::create_filtered_cube::executor::print_totals;
 use crate::query_handler::generate_cube::executor::partial_shuffle;
@@ -9,19 +9,16 @@ use crate::query_handler::window_cube::WindowCubeAst;
 use crate::query_handler::GraphSurgeQuery;
 use crate::GraphSurgeResult;
 use graph_map::GraphMMap;
-use gs_analytics_api::VertexId;
+use gs_analytics_api::{FilteredCubeData, VertexId};
 use itertools::Itertools;
 use log::info;
 use rand::prelude::SliceRandom;
 use std::convert::TryFrom;
 
 impl GraphSurgeQuery for WindowCubeAst {
-    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GraphSurgeError> {
+    fn execute(&self, global_store: &mut GlobalStore) -> Result<GraphSurgeResult, GSError> {
         if global_store.filtered_cube_store.cubes.contains_key(&self.name) {
-            return Err(create_cube_error(format!(
-                "Cube name '{}' already exists in store",
-                self.name
-            )));
+            return Err(GSError::CollectionAlreadyExists(self.name.clone()));
         }
 
         info!("Generating '{}'", self.name);
@@ -30,12 +27,10 @@ impl GraphSurgeQuery for WindowCubeAst {
         let graph = GraphMMap::new(&self.graph_filename);
         let mut edges = (0..graph.nodes())
             .flat_map(|node| {
-                graph.edges(node).iter().map(move |neighbor| {
-                    (
-                        VertexId::try_from(node).expect("Overflow"),
-                        VertexId::try_from(*neighbor).expect("Overflow"),
-                    )
-                })
+                graph
+                    .edges(node)
+                    .iter()
+                    .map(move |neighbor| (VertexId::try_from(node).expect("Overflow"), *neighbor))
             })
             .collect::<Vec<_>>();
         info!("Loaded {} edges", edges.len(),);
@@ -116,7 +111,7 @@ impl GraphSurgeQuery for WindowCubeAst {
         );
         print_totals(&cube);
 
-        global_store.filtered_cube_store.cubes.insert(self.name.to_string(), cube);
+        global_store.filtered_cube_store.cubes.insert(self.name.clone(), cube);
         Ok(GraphSurgeResult::new(format!("Cube '{}' loaded successfully", self.name)))
     }
 }
