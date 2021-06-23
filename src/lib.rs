@@ -48,6 +48,9 @@
     clippy::exhaustive_structs,
     clippy::exhaustive_enums,
     clippy::upper_case_acronyms,
+    clippy::default_numeric_fallback,
+    clippy::if_then_some_else_none,
+    clippy::wildcard_enum_match_arm,
 )]
 // Do not allow print statements. Use `log::info!()` or equivalent instead.
 #![deny(clippy::print_stdout)]

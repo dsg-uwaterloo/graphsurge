@@ -37,7 +37,7 @@ impl Spsp {
             Ok(Self {
                 goals: goals
                     .iter()
-                    .cloned()
+                    .copied()
                     .map(|(u, v)| {
                         (
                             VertexId::try_from(u).expect("Overflow"),

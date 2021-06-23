@@ -65,7 +65,8 @@ mod tests {
         let diffs = results_stash.into_iter().map(|diff_data| diff_data.results.1).collect_vec();
 
         // The expected diff vec is mostly empty except for the values indicated in the vec below.
-        let mut expected_diffs = (0..10).map(|_| vec![]).collect_vec();
+        let mut expected_diffs = Vec::new();
+        (0..10).for_each(|_| expected_diffs.push(Vec::new()));
         vec![(0, [(100, 1)]), (7, [(100, -1)]), (8, [(100, 1)])]
             .into_iter()
             .for_each(|(index, vec)| expected_diffs[index].extend(vec.iter()));

@@ -79,7 +79,7 @@ impl FilteredCube {
             info!("Materializing differential data:");
             let timer = GsTimer::now();
             let diff_data = get_differential_data(&self);
-            info!("Data materialized in {}", timer.elapsed().to_seconds_string());
+            info!("Data materialized in {}", timer.elapsed().seconds_string());
             self.differential_data = Some(diff_data);
         }
     }

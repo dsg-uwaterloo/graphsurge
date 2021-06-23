@@ -105,7 +105,7 @@ pub fn serialize_object<T: Serialize>(
     let writer = GsWriter::new(output_file_path)?;
     bincode::serialize_into(writer.into_buf_writer(), object)
         .map_err(|e| GSError::Serialize(name.to_owned(), e.to_string()))?;
-    info!("Serialized '{}' in {}", name, timer.elapsed().to_seconds_string());
+    info!("Serialized '{}' in {}", name, timer.elapsed().seconds_string());
     Ok(())
 }
 
@@ -116,7 +116,7 @@ pub fn deserialize_object<T: DeserializeOwned>(bin_dir: &str, name: &str) -> Res
     let reader = get_buf_reader(&input_file_path)?;
     let object = bincode::deserialize_from(reader)
         .map_err(|e| GSError::Deserialize(name.to_owned(), e.to_string()))?;
-    info!("Deserialized '{}' in {}", name, timer.elapsed().to_seconds_string());
+    info!("Deserialized '{}' in {}", name, timer.elapsed().seconds_string());
     Ok(object)
 }
 

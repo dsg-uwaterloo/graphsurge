@@ -29,7 +29,7 @@ impl<S: Scope<Timestamp = TimelyTimeStamp>, D: Data> MonitorStream<S, D> for Str
                                 worker_index,
                                 count,
                                 context,
-                                timer.elapsed().to_seconds_string()
+                                timer.elapsed().seconds_string()
                             );
                         }
                         current_limit += limit;

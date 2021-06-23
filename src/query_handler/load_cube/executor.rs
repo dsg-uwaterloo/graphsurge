@@ -73,7 +73,7 @@ impl GraphSurgeQuery for LoadCubeAst {
                 let mut dels = 0;
                 let batch = reader
                     .lines()
-                    .flat_map(|line| {
+                    .filter_map(|line| {
                         let process_line = |line: Result<String, Error>| {
                             if let Ok(line) = line {
                                 if let Some(comment_char) = &self.comment_char {

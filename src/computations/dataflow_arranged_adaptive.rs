@@ -120,7 +120,7 @@ pub fn differential_run_adaptive<C: Computation, T: GsTs + Refines<()> + Lattice
                         diffs,
                         view_timestamp,
                         view_timestamp,
-                        loaded.to_seconds_string()
+                        loaded.seconds_string()
                     );
                     }
                     let next_timestamp = view_timestamp.next();
@@ -137,7 +137,7 @@ pub fn differential_run_adaptive<C: Computation, T: GsTs + Refines<()> + Lattice
                             view_timestamp,
                             view_timestamp,
                             next_timestamp,
-                            total.to_seconds_string()
+                            total.seconds_string()
                         );
                     }
                     all_times
@@ -194,7 +194,7 @@ pub fn differential_run_adaptive<C: Computation, T: GsTs + Refines<()> + Lattice
                                     right_index - left_index,
                                     view_timestamp,
                                     start_ts,
-                                    timer.elapsed().to_seconds_string()
+                                    timer.elapsed().seconds_string()
                                 );
                             }
                         }
@@ -215,7 +215,7 @@ pub fn differential_run_adaptive<C: Computation, T: GsTs + Refines<()> + Lattice
                             end_ts,
                             start_ts,
                             next_timestamp,
-                            total.to_seconds_string()
+                            total.seconds_string()
                         );
                     }
                     all_times.insert(start_ts, (GsDuration::default(), loaded, stable, total));
@@ -420,7 +420,7 @@ pub fn differential_run_adaptive<C: Computation, T: GsTs + Refines<()> + Lattice
                                         right_index - left_index,
                                         view_timestamp,
                                         start_ts,
-                                        timer.elapsed().to_seconds_string()
+                                        timer.elapsed().seconds_string()
                                     );
                                 }
                             }
@@ -442,7 +442,7 @@ pub fn differential_run_adaptive<C: Computation, T: GsTs + Refines<()> + Lattice
                                 end_ts,
                                 start_ts,
                                 next_timestamp,
-                                total.to_seconds_string()
+                                total.seconds_string()
                             );
                         }
                         all_times.insert(*start_ts, (GsDuration::default(), loaded, stable, total));
@@ -487,11 +487,7 @@ pub fn differential_run_adaptive<C: Computation, T: GsTs + Refines<()> + Lattice
             }
 
             let worker_time = timer.elapsed();
-            info!(
-                "Worker {:>2} finished in total {}",
-                worker_index,
-                worker_time.to_seconds_string()
-            );
+            info!("Worker {:>2} finished in total {}", worker_index, worker_time.seconds_string());
             (results, all_times.into_iter().collect_vec(), worker_time, actual_splits)
         })
         .map_err(GSError::Timely)?

@@ -187,50 +187,50 @@ mod tests {
     }
 
     fn assert_equal(left: &PropertyValue, right: &PropertyValue) {
-        assert_eq!(left.compare(&right, Operator::Equal), true);
-        assert_eq!(left.compare(&right, Operator::NotEqual), false);
-        assert_eq!(left.compare(&right, Operator::Greater), false);
-        assert_eq!(left.compare(&right, Operator::GreaterEqual), true);
-        assert_eq!(left.compare(&right, Operator::Less), false);
-        assert_eq!(left.compare(&right, Operator::LessEqual), true);
+        assert!(left.compare(&right, Operator::Equal));
+        assert!(!left.compare(&right, Operator::NotEqual));
+        assert!(!left.compare(&right, Operator::Greater));
+        assert!(left.compare(&right, Operator::GreaterEqual));
+        assert!(!left.compare(&right, Operator::Less));
+        assert!(left.compare(&right, Operator::LessEqual));
 
-        assert_eq!(right.compare(&left, Operator::Equal), true);
-        assert_eq!(right.compare(&left, Operator::NotEqual), false);
-        assert_eq!(right.compare(&left, Operator::Greater), false);
-        assert_eq!(right.compare(&left, Operator::GreaterEqual), true);
-        assert_eq!(right.compare(&left, Operator::Less), false);
-        assert_eq!(right.compare(&left, Operator::LessEqual), true);
+        assert!(right.compare(&left, Operator::Equal));
+        assert!(!right.compare(&left, Operator::NotEqual));
+        assert!(!right.compare(&left, Operator::Greater));
+        assert!(right.compare(&left, Operator::GreaterEqual));
+        assert!(!right.compare(&left, Operator::Less));
+        assert!(right.compare(&left, Operator::LessEqual));
     }
 
     fn assert_greater_than(left: &PropertyValue, right: &PropertyValue) {
-        assert_eq!(left.compare(&right, Operator::Equal), false);
-        assert_eq!(left.compare(&right, Operator::NotEqual), true);
-        assert_eq!(left.compare(&right, Operator::Greater), true);
-        assert_eq!(left.compare(&right, Operator::GreaterEqual), true);
-        assert_eq!(left.compare(&right, Operator::Less), false);
-        assert_eq!(left.compare(&right, Operator::LessEqual), false);
+        assert!(!left.compare(&right, Operator::Equal));
+        assert!(left.compare(&right, Operator::NotEqual));
+        assert!(left.compare(&right, Operator::Greater));
+        assert!(left.compare(&right, Operator::GreaterEqual));
+        assert!(!left.compare(&right, Operator::Less));
+        assert!(!left.compare(&right, Operator::LessEqual));
 
-        assert_eq!(right.compare(&left, Operator::Equal), false);
-        assert_eq!(right.compare(&left, Operator::NotEqual), true);
-        assert_eq!(right.compare(&left, Operator::Greater), false);
-        assert_eq!(right.compare(&left, Operator::GreaterEqual), false);
-        assert_eq!(right.compare(&left, Operator::Less), true);
-        assert_eq!(right.compare(&left, Operator::LessEqual), true);
+        assert!(!right.compare(&left, Operator::Equal));
+        assert!(right.compare(&left, Operator::NotEqual));
+        assert!(!right.compare(&left, Operator::Greater));
+        assert!(!right.compare(&left, Operator::GreaterEqual));
+        assert!(right.compare(&left, Operator::Less));
+        assert!(right.compare(&left, Operator::LessEqual));
     }
 
     fn assert_less_than(left: &PropertyValue, right: &PropertyValue) {
-        assert_eq!(left.compare(&right, Operator::Equal), false);
-        assert_eq!(left.compare(&right, Operator::NotEqual), true);
-        assert_eq!(left.compare(&right, Operator::Greater), false);
-        assert_eq!(left.compare(&right, Operator::GreaterEqual), false);
-        assert_eq!(left.compare(&right, Operator::Less), true);
-        assert_eq!(left.compare(&right, Operator::LessEqual), true);
+        assert!(!left.compare(&right, Operator::Equal));
+        assert!(left.compare(&right, Operator::NotEqual));
+        assert!(!left.compare(&right, Operator::Greater));
+        assert!(!left.compare(&right, Operator::GreaterEqual));
+        assert!(left.compare(&right, Operator::Less));
+        assert!(left.compare(&right, Operator::LessEqual));
 
-        assert_eq!(right.compare(&left, Operator::Equal), false);
-        assert_eq!(right.compare(&left, Operator::NotEqual), true);
-        assert_eq!(right.compare(&left, Operator::Greater), true);
-        assert_eq!(right.compare(&left, Operator::GreaterEqual), true);
-        assert_eq!(right.compare(&left, Operator::Less), false);
-        assert_eq!(right.compare(&left, Operator::LessEqual), false);
+        assert!(!right.compare(&left, Operator::Equal));
+        assert!(right.compare(&left, Operator::NotEqual));
+        assert!(right.compare(&left, Operator::Greater));
+        assert!(right.compare(&left, Operator::GreaterEqual));
+        assert!(!right.compare(&left, Operator::Less));
+        assert!(!right.compare(&left, Operator::LessEqual));
     }
 }

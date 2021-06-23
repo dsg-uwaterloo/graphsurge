@@ -253,7 +253,7 @@ pub fn get_results_stash(
     let timestamp_mappings = get_timestamp_mappings(dimension_lengths);
     orders
         .iter()
-        .map(|order| (0..).zip(order.iter().cloned()))
+        .map(|order| (0..).zip(order.iter().copied()))
         .multi_cartesian_product()
         .map(|values| {
             let timestamp = GSTimestamp::new(&values.iter().map(|&(id, _)| id).collect_vec());

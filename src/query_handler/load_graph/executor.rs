@@ -179,7 +179,7 @@ fn load_vertices(
         );
 
         if index > 0 && index % 500_000 == 0 {
-            info!("Processed {} vertices in {}", index, timer.elapsed().to_seconds_string());
+            info!("Processed {} vertices in {}", index, timer.elapsed().seconds_string());
         }
     }
     Ok(())
@@ -245,7 +245,7 @@ fn load_edges(
     let mut dst_id_missing_count = 0;
     for (index, line) in reader.records().filter_map(Result::ok).enumerate() {
         if index > 0 && index % 1_000_000 == 0 {
-            info!("Processed {} lines in {}", index, timer.elapsed().to_seconds_string());
+            info!("Processed {} lines in {}", index, timer.elapsed().seconds_string());
         }
         let mut line_parts = line.iter();
 

@@ -72,7 +72,7 @@ pub fn differential_run_2_stage<
                         worker_index,
                         right_index - left_index,
                         timestamp,
-                        timer.elapsed().to_seconds_string()
+                        timer.elapsed().seconds_string()
                     );
                 }
                 all_times.insert(*timestamp, Default::default());
@@ -81,11 +81,7 @@ pub fn differential_run_2_stage<
         while worker.step() {}
         let load_time = timer.elapsed();
         if worker_index == 0 {
-            info!(
-                "[worker {:>2}] All data loaded in {}",
-                worker_index,
-                load_time.to_seconds_string()
-            );
+            info!("[worker {:>2}] All data loaded in {}", worker_index, load_time.seconds_string());
             print_memory_usage(format_args!("data loaded"));
         }
 
@@ -115,7 +111,7 @@ pub fn differential_run_2_stage<
         while worker.step() {}
         let comp_time = timer.elapsed();
         if worker_index == 0 {
-            info!("Computation finished in {}", comp_time.to_seconds_string());
+            info!("Computation finished in {}", comp_time.seconds_string());
         }
 
         let mut results = HashMap::new();
@@ -131,7 +127,7 @@ pub fn differential_run_2_stage<
 
         let worker_time = worker_timer.elapsed();
         if worker_index == 0 {
-            info!("Workers finished in total {}", worker_time.to_seconds_string());
+            info!("Workers finished in total {}", worker_time.seconds_string());
         }
 
         all_times.insert(

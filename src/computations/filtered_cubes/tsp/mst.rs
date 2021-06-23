@@ -130,7 +130,7 @@ pub(super) mod tests {
 
     pub fn get_expected_map(data: Vec<(usize, usize, usize)>) -> MST {
         let mut expected_map = HashMap::new();
-        data.into_iter().for_each(|(s, d, v)| {
+        for (s, d, v) in data {
             expected_map
                 .entry(VertexId::try_from(s).expect("Overflow"))
                 .or_insert_with(Vec::new)
@@ -139,7 +139,7 @@ pub(super) mod tests {
                 .entry(VertexId::try_from(d).expect("Overflow"))
                 .or_insert_with(Vec::new)
                 .push((VertexId::try_from(s).expect("Overflow"), v));
-        });
+        }
         expected_map
     }
 }

@@ -73,7 +73,7 @@ pub fn differential_run_1_stage<
                     worker_index,
                     right_index - left_index,
                     *timestamp,
-                    loaded.to_seconds_string()
+                    loaded.seconds_string()
                 );
             }
             let timer2 = GsTimer::now();
@@ -89,7 +89,7 @@ pub fn differential_run_1_stage<
                     worker_index,
                     *timestamp,
                     timestamp.next(),
-                    total.to_seconds_string()
+                    total.seconds_string()
                 );
             }
             all_times.push((*timestamp, (GsDuration::default(), loaded, stable, total)));
@@ -97,7 +97,7 @@ pub fn differential_run_1_stage<
 
         let worker_time = worker_timer.elapsed();
         if worker_index == 0 {
-            info!("Workers finished in total {}", worker_time.to_seconds_string());
+            info!("Workers finished in total {}", worker_time.seconds_string());
         }
         (
             HashMap::default(),

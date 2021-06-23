@@ -249,7 +249,7 @@ where
     info!(
         "Done with {} in {}",
         runtime_data.c_type.description(),
-        timer.elapsed().to_seconds_string()
+        timer.elapsed().seconds_string()
     );
     if runtime_data.materialize_results != MaterializeResults::None {
         print_save_results::<C>(&full_results, &runtime_data.save_to)?;
@@ -326,7 +326,7 @@ where
     info!(
         "Done with {} in {}",
         runtime_data.c_type.description(),
-        timer.elapsed().to_seconds_string()
+        timer.elapsed().seconds_string()
     );
 
     if let Some(save_path) = &runtime_data.save_to {
@@ -393,7 +393,7 @@ where
             };
             full_results.push((timestamp_index, (full_result, *timestamp)));
         }
-        info!("Results materialized in {}", timer.elapsed().to_seconds_string());
+        info!("Results materialized in {}", timer.elapsed().seconds_string());
         print_save_results::<C>(&full_results, &runtime_data.save_to)?;
     }
 
@@ -419,7 +419,7 @@ where
     info!(
         "Done with {} in {}",
         runtime_data.c_type.description(),
-        timer.elapsed().to_seconds_string()
+        timer.elapsed().seconds_string()
     );
 
     if let Some(save_path) = &runtime_data.save_to {
@@ -512,9 +512,9 @@ fn process_times(
             "{} times: {}: loaded = {}, stable = {}, total = {}",
             msg,
             timestamp,
-            loaded_max.to_seconds_string(),
-            stable_max.to_seconds_string(),
-            total_max.to_seconds_string()
+            loaded_max.seconds_string(),
+            stable_max.seconds_string(),
+            total_max.seconds_string()
         );
         if *timestamp == zeroth_ts {
             all_times[0][0] = merged_max;
@@ -535,19 +535,13 @@ fn process_times(
     info!(
         "Computation of {} worker time: {}",
         msg,
-        total_times.iter().max().expect("Max not found").to_seconds_string()
+        total_times.iter().max().expect("Max not found").seconds_string()
     );
     for (max_times, strn) in all_times.iter().zip_eq(["initial", "rest", "total"].iter()) {
         for (max_time, strn2) in
             max_times.iter().zip_eq(["merged", "loaded", "stable", "total"].iter())
         {
-            info!(
-                "Computation of {} {:>7} {:>6}: {}",
-                msg,
-                strn,
-                strn2,
-                max_time.to_seconds_string()
-            );
+            info!("Computation of {} {:>7} {:>6}: {}", msg, strn, strn2, max_time.seconds_string());
         }
     }
 }

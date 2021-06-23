@@ -26,7 +26,7 @@ impl GsTimer {
 }
 
 impl GsDuration {
-    pub fn to_millis_string(&self) -> String {
+    pub fn millis_string(&self) -> String {
         const MICRO_PER_MILLI: u128 = 1_000;
         format!(
             "{}.{:03} ms",
@@ -35,7 +35,7 @@ impl GsDuration {
         )
     }
 
-    pub fn to_seconds_string(&self) -> String {
+    pub fn seconds_string(&self) -> String {
         format!("{}.{:06} s", self.duration.as_secs(), self.duration.subsec_micros())
     }
 }
@@ -82,8 +82,8 @@ mod tests {
         ];
         for (sec, nano, sec_str, milli_str) in inputs {
             let duration = GsDuration { duration: Duration::new(sec, nano) };
-            assert_eq!(duration.to_seconds_string(), sec_str);
-            assert_eq!(duration.to_millis_string(), milli_str);
+            assert_eq!(duration.seconds_string(), sec_str);
+            assert_eq!(duration.millis_string(), milli_str);
         }
     }
 }

@@ -42,6 +42,9 @@
     clippy::exhaustive_structs,
     clippy::exhaustive_enums,
     clippy::upper_case_acronyms,
+    clippy::default_numeric_fallback,
+    clippy::if_then_some_else_none,
+    clippy::wildcard_enum_match_arm,
 )]
 // Mark some lints as errors.
 #![deny(clippy::print_stdout)]
@@ -168,14 +171,10 @@ fn main() -> Result<(), GSError> {
                 let result = graphsurge::process_query(&mut global_store, &mut query_string);
                 match result {
                     Ok(query_result) => {
-                        info!(
-                            "[Success][{}] {}",
-                            timer.elapsed().to_seconds_string(),
-                            query_result
-                        );
+                        info!("[Success][{}] {}", timer.elapsed().seconds_string(), query_result);
                     }
                     Err(e) => {
-                        info!("[Error][{}] {}", timer.elapsed().to_seconds_string(), e.to_string());
+                        info!("[Error][{}] {}", timer.elapsed().seconds_string(), e.to_string());
                         if file_queries.is_some() {
                             break 'cli_loop;
                         }

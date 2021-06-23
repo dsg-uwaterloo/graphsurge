@@ -77,7 +77,7 @@ pub fn differential_run_basic<
         );
 
         let worker_time = timer.elapsed();
-        info!("Worker {:>2} finished in total {}", worker_index, worker_time.to_seconds_string());
+        info!("Worker {:>2} finished in total {}", worker_index, worker_time.seconds_string());
 
         (results, all_times, worker_time, SplitIndices::default())
     })
@@ -146,7 +146,7 @@ fn insert_edges<A: Allocate, C: Computation, T: Timestamp + Display + Copy>(
                     right_index - left_index,
                     diff[left_index],
                     current_timestamp,
-                    loaded.to_seconds_string()
+                    loaded.seconds_string()
                 );
                 if worker_index == 0 {
                     print_memory_usage(format_args!("loaded {}", current_timestamp));
@@ -164,7 +164,7 @@ fn insert_edges<A: Allocate, C: Computation, T: Timestamp + Display + Copy>(
                     worker_index,
                     current_timestamp,
                     next_timestamp,
-                    total.to_seconds_string()
+                    total.seconds_string()
                 );
                 if worker_index == 0 {
                     print_memory_usage(format_args!("computer {}", current_timestamp));
