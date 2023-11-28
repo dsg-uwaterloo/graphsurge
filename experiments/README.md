@@ -7,10 +7,9 @@
 set -euo pipefail; shopt -s nullglob
 
 root=$HOME/graphsurge/experiments
-old=false # Set to true to run old experiments
 
 # Download Graphsurge
-git clone https://github.com/sigmod-2021-195/graphsurge $HOME/graphsurge
+git clone https://github.com/dsg-uwaterloo/graphsurge $HOME/graphsurge
 
 # Build Graphsurge
 cd $root/docker
